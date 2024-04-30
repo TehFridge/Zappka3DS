@@ -1,0 +1,27 @@
+## --- Metadata Options --- ##
+
+# [string] @title       : Name of the game, default: 'SuperGame'.
+# [string] @author      : Author of the game, default: 'SuperAuthor'
+# [string] @description : Description of the game, default: 'SuperDescription'
+# [string] @version     : Version of the game in {major}.{minor}.{revision} format, default: '0.1.0'
+# [string] @icons       : Icon paths, defaults: empty string ('')
+[metadata]
+title = "Zappka3DS"
+author = "TehFridge"
+description = "Jaka Parówa Wariacie?"
+version = "1.0.0"
+icons = { ctr = "icon.png", hac = "", cafe = "" }
+
+## --- Build Options --- ##
+
+# [array]  @targts        : Target console(s) to build for. Default: ["ctr", "hac", "cafe"].
+#                           These are 3DS, Switch, and Wii U respectively.
+#
+# [string] @source        : Game source directory; relative to the config
+#                           file. Default: "game".
+# [bool]   @packaged      : Whether to bundle your game into the executable.
+#                           Default: false.
+[build]
+targets = ["ctr"]
+source = "Zappka3DS_1.0"
+packaged = true
