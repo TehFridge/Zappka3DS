@@ -27,7 +27,6 @@ local elapsedTimeFade = 0
 local fadeDuration = 0.2
 local stateChanged = false
 local music = love.audio.newSource("bgm/bgm.ogg", "stream")
-local musiccode = love.audio.newSource("bgm/bgm2.ogg", "stream")
 local sfx = love.audio.newSource("bgm/sfx.ogg", "static")
 local sfx2 = love.audio.newSource("bgm/sfx2.ogg", "static")
 name = nil
@@ -51,9 +50,6 @@ function love.load()
     barcode = Barcode(codeforinput, 60, 3)
 	music:setLooping(true)
     music:play()
-	musiccode:setLooping(true)
-    musiccode:play()
-    musiccode:setVolume(0)
 end
  
 function love.draw(screen)
@@ -125,14 +121,10 @@ function love.gamepadpressed(joystick, button)
     if button == "a" then
         if state == "barcode" then
 		    sfx2:play()
-			music:setVolume(1)
-			musiccode:setVolume(0)
             state = "main_strona"
 			isFading = false
         else
 		    sfx:play()
-			music:setVolume(0)
-			musiccode:setVolume(1)
             state = "barcode"
 			isScrolling = true
 			isFading = true
