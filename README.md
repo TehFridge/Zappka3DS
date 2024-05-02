@@ -3,6 +3,11 @@ Get your Żappsy™ straight with Żappka3DS
 
 ![zappkaxd](https://github.com/TehFridge/Zappka3DS/assets/85436576/1888f561-dc0b-44c0-bc47-aebaa19cf0f3)
 
+# Usage
+A - Show Your Barcode
+Y - Change Your Barcode (when the textbox appears type there the numbers underneath your Żappka Barcode)
+X - Change Your Name (when the textbox appears type there any name you want)
+
 # Installation (for now :`[, 3dsx coming soon i promise)
 - Download the Source Code and the Newest version of [LovePotion](https://github.com/lovebrew/lovepotion/releases/)
 - Put the "lovepotion.3dsx" and ".elf" into this path "/3ds/lovepotion"  (if the folder doesnt exist, make one)
