@@ -5,7 +5,9 @@ Get your Żappsy™ straight with Żappka3DS
 
 # Usage
 A - Show Your Barcode
+
 Y - Change Your Barcode (when the textbox appears type there the numbers underneath your Żappka Barcode)
+
 X - Change Your Name (when the textbox appears type there any name you want)
 
 # Installation (for now :`[, 3dsx coming soon i promise)
