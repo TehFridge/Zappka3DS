@@ -10,12 +10,9 @@ Y - Change Your Barcode (when the textbox appears type there the numbers underne
 
 X - Change Your Name (when the textbox appears type there any name you want)
 
-# Installation (for now :`[, 3dsx coming soon i promise)
-- Download the Source Code and the Newest version of [LovePotion](https://github.com/lovebrew/lovepotion/releases/)
-- Put the "lovepotion.3dsx" and ".elf" into this path "/3ds/lovepotion"  (if the folder doesnt exist, make one)
-- Rename the "Żappka3DS_1.0" folder from the Source Code to "game", and move the game folder to "/3ds/lovepotion"
-- Run LovePotion from the Homebrew Launcher.
-- Done lol.
+# Installation 
+Just download the Zappka3DS.3dsx and put it in the /3ds folder on your SD Card.
+
 
 # Ready to make your 3DS useful again in 2024?
 Well get your Żappka Barcode and your 3DS ready to catch some Żappsy™!
