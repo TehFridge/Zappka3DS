@@ -20,6 +20,7 @@ Well get your Żappka Barcode and your 3DS ready to catch some Żappsy™!
 
 ## Credits
 Big thanks to [Nawias](https://github.com/Nawias) for the [Code 128 Renderer Library](https://github.com/Nawias/bar128-love). It sure made this project so that it could be released.
+
 BGM by John "Joy" Tay - i love polygons
 
 
