@@ -1,4 +1,14 @@
 # Żappka3DS
+
+# OUTDATED FOR NOW
+PL:
+Żabka postanowiła zaimplementować kody QR w swojej aplikacji przynajmniej na obecną chwile aplikacja Żappka3DS jest właściwie bezużyteczna.
+Do czasu zaimplementowania kodów QR w 3DS'owej wersji (nad czym trwają prace) to projekt jest zawieszony.
+
+EN:
+Żabka decided to implement QR codes in their app that rendered Żappka3DS obsolete and useless.
+For the time being until the QR codes are implemeneted (which is in the works) the project is on hiatus.
+
 Get your Żappsy™ straight with Żappka3DS
 
 ![zappkaxd](https://github.com/TehFridge/Zappka3DS/assets/85436576/1888f561-dc0b-44c0-bc47-aebaa19cf0f3)
