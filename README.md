@@ -1,5 +1,8 @@
 # Żappka3DS
 
+# DISCALIMER 
+PLZ INSTALL THE LATEST HB-MENU SINCE IT HAS SSL PATCHES BUNDLED IN OR ELSE IT WONT WORK!!!
+
 # WE'RE BACK!
 PL:
 Dzięki effort'owi [Dominika/Domints'a](https://github.com/domints) (DZIĘKI WIELKIE STARY! <3) i moim głupim mózgiem udało nam się reaktywować aplikację!
