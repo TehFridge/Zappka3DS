@@ -1,13 +1,11 @@
 # Żappka3DS
 
-# OUTDATED FOR NOW
+# WE'RE BACK!
 PL:
-Żabka postanowiła zaimplementować kody QR w swojej aplikacji przynajmniej na obecną chwile aplikacja Żappka3DS jest właściwie bezużyteczna.
-Do czasu zaimplementowania kodów QR w 3DS'owej wersji (nad czym trwają prace) to projekt jest zawieszony.
+Dzięki effort'owi [Dominika/Domints'a](https://github.com/domints) (DZIĘKI WIELKIE STARY! <3) i moim głupim mózgiem udało nam się reaktywować aplikację!
 
 EN:
-Żabka decided to implement QR codes in their app that rendered Żappka3DS obsolete and useless.
-For the time being until the QR codes are implemeneted (which is in the works) the project is on hiatus.
+Thanks to the efforts of [Dominik/Domints](https://github.com/domints) (THX DUDE <3) and my stupid-ass brain we managed to reactivate the app!
 
 Get your Żappsy™ straight with Żappka3DS
 
@@ -15,8 +13,6 @@ Get your Żappsy™ straight with Żappka3DS
 
 # Usage
 A - Show Your Barcode
-
-Y - Change Your Barcode (when the textbox appears type there the numbers underneath your Żappka Barcode)
 
 X - Change Your Name (when the textbox appears type there any name you want)
 
@@ -29,7 +25,8 @@ Well get your Żappka Barcode and your 3DS ready to catch some Żappsy™!
 
 
 ## Credits
-Big thanks to [Nawias](https://github.com/Nawias) for the [Code 128 Renderer Library](https://github.com/Nawias/bar128-love). It sure made this project so that it could be released.
+Big thanks to [Dominik/Domints'a](https://github.com/domints) for his Żappka TOTP code implementation used in the QR Codes.
+Big thanks to [Nawias](https://github.com/Nawias) for the [Code 128 Renderer Library](https://github.com/Nawias/bar128-love). It sure made this project so that it could be released. (ŻAPPKA DOES NOT USE BARCODES ANYMORE BUT HE STILL DID A GOOD JOB)
 
 BGM by John "Joy" Tay - i love polygons
 
