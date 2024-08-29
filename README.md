@@ -27,6 +27,8 @@ Well get your Żappka Barcode and your 3DS ready to catch some Żappsy™!
 
 ## Credits
 Big thanks to [Dominik/Domints'a](https://github.com/domints) for his Żappka TOTP code implementation used in the QR Codes.
+
+
 Big thanks to [Nawias](https://github.com/Nawias) for the [QR Renderer Library](https://github.com/Nawias/love-qrcode). It sure made this project so that it could be released.
 
 BGM by John "Joy" Tay - i love polygons
