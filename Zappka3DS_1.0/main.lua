@@ -252,8 +252,8 @@ end
 function tel_login()
 	if love._potion_version == nil then
 		handle_authflow()
-		numertel = "660222062"
-		sendvercode("660222062")
+		numertel = "numer_telefonu"
+		sendvercode("numer_telefonu")
 		test()
 		state = "smscode"
 	else
