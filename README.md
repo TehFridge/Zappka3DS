@@ -9,7 +9,8 @@ Thanks to the efforts of [Dominik/Domints](https://github.com/domints) (THX DUDE
 
 Get your Żappsy™ straight with Żappka3DS
 
-![zappkaxd](https://github.com/TehFridge/Zappka3DS/assets/85436576/1888f561-dc0b-44c0-bc47-aebaa19cf0f3)
+![image](https://github.com/user-attachments/assets/929883cf-df87-43e1-a34d-33d94d3d4cda)
+
 
 # Usage
 A - Show Your Barcode
