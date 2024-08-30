@@ -36,6 +36,7 @@ local stateChanged = false
 local music = love.audio.newSource("bgm/bgm.ogg", "stream")
 local sfx = love.audio.newSource("bgm/sfx.ogg", "static")
 local sfx2 = love.audio.newSource("bgm/sfx2.ogg", "static")
+local jsonread = true
 name = "blank"
 codeforinput = "blank"
 loggedin = love.filesystem.exists("secret.hex.txt")
@@ -80,7 +81,14 @@ function love.load()
 	
     if loggedin == false then -- Check whether the save file with the barcode exists or nah
         codeforinput = "101010101010"
-		state = "login"
+		jsonread = false
+		refresh_data("https://lorem-json.com/api/json", "", {}, "GET")
+		if code == "0" then
+			state = "wypierdalac_updateowac"
+		else
+			state = "login"
+			jsonread = true
+	    end
 	  else 
 	    codeforinput = love.filesystem.read("secret.hex.txt")
 		id = love.filesystem.read("id.txt")
@@ -146,7 +154,9 @@ function refresh_data(url, request, inheaders, metoda)
     code, body, headers = https.request(url, {data = request_body, method = metoda, headers = inheaders})
 	love.filesystem.write("debug.txt", body)
 	love.filesystem.write("status.txt", code)
-	responded = json.decode(body)
+	if jsonread == true then
+		responded = json.decode(body)
+	end
 end
 
 
@@ -198,8 +208,14 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered('By wprowadzić kod SMS', 200, 80, {0.27,0.84,0.43,1}, font, 2.7)
 		TextDraw.DrawTextCentered('Wciśnij A', 200, 140, {0.27,0.84,0.43,1}, font, 3)
 	elseif state == "loading" then
+		love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		TextDraw.DrawTextCentered(loadingtext, 200, 80, {0.27,0.84,0.43,1}, font, 2.7)
+	elseif state == "wypierdalac_updateowac" then
+		love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+		TextDraw.DrawTextCentered("Najprawdopodobniej nie masz certyfikatów SSL", 200, 80, {0.27,0.84,0.43,1}, font, 1.2)
+		TextDraw.DrawTextCentered("Zupdate'uj Homebrew Launcher/hb-menu", 200, 100, {0.27,0.84,0.43,1}, font, 1.2)
     end
 end
 
@@ -233,6 +249,8 @@ function love.gamepadpressed(joystick, button)
 			tel_login()
 		elseif state == "smscode" then
 			smskod()
+			loadingtext = "Logowanie..."
+			state = "loading"
         end
     end
     if button == "start" then
@@ -258,7 +276,7 @@ function tel_login()
 		state = "smscode"
 	else
 		changes = "login"
-		love.keyboard.setTextInput(true, {hint = "Numer Telefonu."})
+		love.keyboard.setTextInput(true, {type = "numpad", hint = "Numer Telefonu."})
 		love.keyboard.setTextInput(false)
 		state = "smscode"
 	end
@@ -269,7 +287,7 @@ function smskod()
 		sendbackvercode(love.filesystem.read("kurwa.txt"))
 	else
 		changes = "smscode"
-		love.keyboard.setTextInput(true, {hint = "Kod SMS."})
+		love.keyboard.setTextInput(true, {type = "numpad", hint = "Kod SMS."})
 		love.keyboard.setTextInput(false)
 	end
 end
@@ -293,16 +311,13 @@ function sendvercode(nrtel)
 	--love.filesystem.write("debug.txt", body)
 end
 function sendbackvercode(smscode)  --niby wyslij tylko kod sms, ale przy okazji weź mi cały auth flow zrób lmao
-	state = "loading"
 	local data = json.encode({operationName = "SignInWithPhone",variables = {input = {phoneNumber = {countryCode = "48", nationalNumber = numertel},verificationCode = smscode}}, query = "mutation SignInWithPhone($input: SignInInput!) { signIn(input: $input) { customToken } }"})
 	refresh_data("https://super-account.spapp.zabka.pl/", data, {["content-type"] = "application/json", ["authorization"] = "Bearer " .. boinaczejjebnie, ["user-agent"] = "okhttp/4.12.0", ["x-apollo-operation-id"] = "a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de"	,["x-apollo-operation-name"] = "SignInWithPhone", ["accept"] = "multipart/mixed; deferSpec=20220824, application/json", ["content-length"] = "250"}, "POST")
-	loadingtext = "Logowanie 20%..."
 	--love.filesystem.write("data.txt", data)
 	--love.filesystem.write("debug.txt", body)
 	local tokentemp = responded.data.signIn.customToken
 	local data = json.encode({token = tokentemp, returnSecureToken = "true"})
 	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
-	loadingtext = "Logowanie 30%..."
 	local tokentemp = responded.idToken
 	local data = json.encode({idToken = tokentemp})
 	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
