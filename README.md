@@ -1,6 +1,8 @@
 # Żappka3DS
 
 # DISCLAIMER 
+(05.09.24) - https://fxtwitter.com/R3fridg3rator/status/1831769412866851210 (WE GOT IT FIXED)
+
 (02.09.24) - https://fxtwitter.com/R3fridg3rator/status/1830528513465561583
 
 PLZ INSTALL THE LATEST HB-MENU SINCE IT HAS SSL PATCHES BUNDLED IN OR ELSE IT WONT WORK!!!
