@@ -8,13 +8,14 @@ local ltn12 = require("ltn12")
 local bit = require("bit")    
 local sha1 = require("sha1")
 local struct = require("lib.struct")
+local ffi = require("ffi")
 --local Barcode = require("lib.bar128") -- an awesome Code128 library made by Nawias (POLSKA GUROM)
 local font = love.graphics.newFont("bold.ttf") -- Font lol
 local reference = 0
 local scrolltimerX = -100
-local timer = 30
 local SCREEN_WIDTH = 400 
 local SCREEN_HEIGHT = 240
+local timer = 30
 local exists = "dunno"
 local state = ""
 local elapsedTime = 0
@@ -49,30 +50,25 @@ if love._potion_version == nil then
     love._console_name = "3DS"
 end
 
-local function bytesToInt(bytes, index)
-    local result = 0
-    for i = index, index + 3 do
-        result = result * 256 + bytes:byte(i)
-    end
-    return result
-end
 
-local function hmac_sha1(key, message)
-    local blocksize = 64
-
-    if #key > blocksize then
-        key = sha1.binary(key)
-    end
-
-    key = key .. string.rep("\0", blocksize - #key)
-    local o_key_pad = key:gsub('.', function(x) return string.char(bit.bxor(string.byte(x), 0x5c)) end)
-    local i_key_pad = key:gsub('.', function(x) return string.char(bit.bxor(string.byte(x), 0x36)) end)
-
-    return sha1.binary(o_key_pad .. sha1.binary(i_key_pad .. message))
-end
 
 
 function love.load()
+    -- Get the current time
+	generated_once = false
+    local current_time = os.time()
+    local current_seconds = os.date("%S", current_time)
+
+    -- Determine the initial delay based on the current time
+    if tonumber(current_seconds) < 30 then
+        initial_delay = 30 - tonumber(current_seconds)
+    else
+        initial_delay = 60 - tonumber(current_seconds)
+    end
+
+    -- Set the timer variables
+    timer = initial_delay
+    interval = 30
 	if existsname == false then -- Check whether the save file with the name exists or nah
         name = "3DS"
 	else 
@@ -92,28 +88,58 @@ function love.load()
 	  else 
 	    codeforinput = love.filesystem.read("secret.hex.txt")
 		id = love.filesystem.read("id.txt")
-		calculatetotp()
 		state = "main_strona"
     end
     --barcode = Barcode(codeforinput, 60, 3)
 	music:setLooping(true)
     music:play()
 end
-function calculatetotp()
-	local secret = codeforinput:gsub("%s", ""):lower()  -- wypierdol jakiś random shit (nwm ja to tylko portuje lol)
-    local secretBytes = secret:gsub("(..)", function(hex)
+
+local function c(arr, index)
+    local result = 0
+    for i = index, index + 3 do
+        result = bit.lshift(result, 8) + bit.band(arr:byte(i), 0xFF)
+    end
+    return result
+end
+
+-- Function to convert an integer to an 8-byte big-endian binary string
+local function intToBytesBigEndian(num)
+    local bytes = {}
+    for i = 7, 0, -1 do
+        bytes[#bytes + 1] = string.char(bit.band(bit.rshift(num, i * 8), 0xFF))
+    end
+    return table.concat(bytes)
+end
+function hexToBinary(hex)
+    local binary = ""
+    for i = 1, #hex, 2 do
+        local byte = hex:sub(i, i+1)
+        binary = binary .. string.char(tonumber(byte, 16))
+    end
+    return binary
+end
+function calculatetotp() --NAPRAWIŁEM KURWA
+	local javaIntMax = 2147483647
+
+	local function c(arr, index)
+		local result = 0
+		for i = index, index + 4 do
+			result = bit.bor(bit.lshift(result, 8), bit.band(arr:byte(i), 0xFF))
+		end
+		return result
+	end
+	local secretHex = codeforinput
+	local secret = (secretHex:gsub('..', function(hex)
         return string.char(tonumber(hex, 16))
-    end)
+    end))
 
     local ts = math.floor(os.time() / 30)
-    local msg = struct.pack(">I8", ts)  -- Spakuj timestamp jako 64-bitowy big-endian integer
+    local msg = struct.pack(">L8", ts)
 
-    local outputBytes = hmac_sha1(secretBytes, msg)
+    local outputBytes = sha1.hmac_binary(secret, msg)
 
-    local len = #outputBytes
-    local lastByte = outputBytes:byte(len)
-    local offset = bit.band(lastByte, 0xF) 
-    local magicNumber = bytesToInt(outputBytes, offset + 1) % 1000000
+    local magicNumber = bit.band(c(outputBytes, bit.band(outputBytes:byte(#outputBytes), 0xF)), 2147483647) % 1000000
 
     totp = string.format("%06d", magicNumber)
 	qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
@@ -131,7 +157,8 @@ function reloadmenu()
 end
 
 function refresh_data(url, request, inheaders, metoda)
-	love.filesystem.write("data.txt", request)
+	print(request)
+	--love.filesystem.write("data.txt", request)
     -- Headers
     -- local myheaders = {
         -- ["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; rv:129.0) Gecko/20100101 Firefox/129.0",
@@ -152,8 +179,8 @@ function refresh_data(url, request, inheaders, metoda)
     response_body = {}
     -- Making the HTTP request
     code, body, headers = https.request(url, {data = request_body, method = metoda, headers = inheaders})
-	love.filesystem.write("debug.txt", body)
-	love.filesystem.write("status.txt", code)
+	print(body)
+	print(code)
 	if jsonread == true then
 		responded = json.decode(body)
 	end
@@ -193,6 +220,7 @@ function draw_top_screen(dt)
 		love.graphics.setColor(0, 0, 0, 1)
 		qr1:draw(95,barY,0,6.5)
 		love.graphics.setColor(0.27,0.84,0.43,currentFade)
+		love.graphics.print(totp, font, 20, 10, 0, 1.2)
         --love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
 		--TextDraw.DrawTextCentered(id, SCREEN_WIDTH/2, currentY - 25, {0,0,0,1}, font, 1.9)
 		--TextDraw.DrawTextCentered("Zeskanuj swój Kod Kreskowy", SCREEN_WIDTH/2, currentY, {0.27,0.84,0.43,1}, font, 2.3)
@@ -239,6 +267,10 @@ function love.gamepadpressed(joystick, button)
             state = "main_strona"
 			isFading = false
         elseif state == "main_strona" then
+			if generated_once == false then
+				calculatetotp()
+			end
+			generated_once = true
 		    sfx:play()
             state = "barcode"
 			isScrolling = true
@@ -249,8 +281,6 @@ function love.gamepadpressed(joystick, button)
 			tel_login()
 		elseif state == "smscode" then
 			smskod()
-			loadingtext = "Logowanie..."
-			state = "loading"
         end
     end
     if button == "start" then
@@ -270,8 +300,8 @@ end
 function tel_login()
 	if love._potion_version == nil then
 		handle_authflow()
-		numertel = "numer_telefonu"
-		sendvercode("numer_telefonu")
+		numertel = "660222062"
+		sendvercode("660222062")
 		test()
 		state = "smscode"
 	else
@@ -289,6 +319,8 @@ function smskod()
 		changes = "smscode"
 		love.keyboard.setTextInput(true, {type = "numpad", hint = "Kod SMS."})
 		love.keyboard.setTextInput(false)
+		loadingtext = "Logowanie..."
+		state = "loading"
 	end
 end
 function test()
@@ -322,8 +354,8 @@ function sendbackvercode(smscode)  --niby wyslij tylko kod sms, ale przy okazji 
 	local data = json.encode({idToken = tokentemp})
 	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
 	loadingtext = "Logowanie 45%..."
-	uuidgen.seed()
-	local data = json.encode({identityProviderToken = tokentemp, identityProvider = "OAUTH", apiKey = "b646c65e-a43d-4a61-9294-6c7c4385c762", uuid = uuidgen(), deviceId = "0432b18513e325a5"})
+	-- uuidgen.seed()
+	-- local data = json.encode({identityProviderToken = tokentemp, identityProvider = "OAUTH", apiKey = "b646c65e-a43d-4a61-9294-6c7c4385c762", uuid = uuidgen(), deviceId = "0432b18513e325a5"})
 	-- refresh_data("https://zabka-snrs.zabka.pl/sauth/v3/auth/login/client/conditional", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "android;28;A600FNXXS5BTB2;9;SM-A600FN;samsung;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["content-length"] = "1140"}, "POST")
 	-- loadingtext = "Logowanie 65%..."
 	local data = ""
@@ -407,13 +439,15 @@ function love.update(dt)
         isFading = true
         stateChanged = false
     end
-	timer = timer - dt
-	if state == "barcode" then
+    -- Update the timer
+    timer = timer - dt
+
+    -- When the timer hits zero, reset it to the interval
 		if timer <= 0 then
 			-- Restart the timer
 			timer = 30
 			calculatetotp()
 		end
-	end
+	
     love.graphics.origin()  
 end
