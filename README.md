@@ -1,6 +1,8 @@
 # Żappka3DS
 
 # DISCLAIMER 
+FROM WHAT I TESTED THE CODES ONLY GET DRAWN CORRECTLY IF THE CONSOLE'S TIMEZONE IS UTC +0000 (go in the rosalina menu > misc. settings > update time > set to utc +0000)
+
 (05.09.24) - https://fxtwitter.com/R3fridg3rator/status/1831769412866851210 (WE GOT IT FIXED)
 
 (02.09.24) - https://fxtwitter.com/R3fridg3rator/status/1830528513465561583
