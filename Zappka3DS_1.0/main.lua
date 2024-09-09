@@ -8,7 +8,7 @@ local ltn12 = require("ltn12")
 local bit = require("bit")    
 local sha1 = require("sha1")
 local struct = require("lib.struct")
-local ffi = require("ffi")
+--local ffi = require("ffi")
 --local Barcode = require("lib.bar128") -- an awesome Code128 library made by Nawias (POLSKA GUROM)
 local font = love.graphics.newFont("bold.ttf") -- Font lol
 local reference = 0
@@ -43,6 +43,7 @@ codeforinput = "blank"
 loggedin = love.filesystem.exists("secret.hex.txt")
 existsname = love.filesystem.exists("imie.txt")
 love.graphics.setDefaultFilter("nearest")
+gui_design_mode = false
 
 if love._potion_version == nil then
 	local nest = require("nest").init({ console = "3ds", scale = 1 })
@@ -56,19 +57,7 @@ end
 function love.load()
     -- Get the current time
 	generated_once = false
-    local current_time = os.time()
-    local current_seconds = os.date("%S", current_time)
 
-    -- Determine the initial delay based on the current time
-    if tonumber(current_seconds) < 30 then
-        initial_delay = 30 - tonumber(current_seconds)
-    else
-        initial_delay = 60 - tonumber(current_seconds)
-    end
-
-    -- Set the timer variables
-    timer = initial_delay
-    interval = 30
 	if existsname == false then -- Check whether the save file with the name exists or nah
         name = "3DS"
 	else 
@@ -88,6 +77,8 @@ function love.load()
 	  else 
 	    codeforinput = love.filesystem.read("secret.hex.txt")
 		id = love.filesystem.read("id.txt")
+		authtoken = love.filesystem.read("token.txt")
+		updatezappsy()
 		state = "main_strona"
     end
     --barcode = Barcode(codeforinput, 60, 3)
@@ -95,30 +86,6 @@ function love.load()
     music:play()
 end
 
-local function c(arr, index)
-    local result = 0
-    for i = index, index + 3 do
-        result = bit.lshift(result, 8) + bit.band(arr:byte(i), 0xFF)
-    end
-    return result
-end
-
--- Function to convert an integer to an 8-byte big-endian binary string
-local function intToBytesBigEndian(num)
-    local bytes = {}
-    for i = 7, 0, -1 do
-        bytes[#bytes + 1] = string.char(bit.band(bit.rshift(num, i * 8), 0xFF))
-    end
-    return table.concat(bytes)
-end
-function hexToBinary(hex)
-    local binary = ""
-    for i = 1, #hex, 2 do
-        local byte = hex:sub(i, i+1)
-        binary = binary .. string.char(tonumber(byte, 16))
-    end
-    return binary
-end
 function calculatetotp() --NAPRAWIŁEM KURWA
 	local javaIntMax = 2147483647
 
@@ -133,13 +100,13 @@ function calculatetotp() --NAPRAWIŁEM KURWA
 	local secret = (secretHex:gsub('..', function(hex)
         return string.char(tonumber(hex, 16))
     end))
-
-    local ts = math.floor(os.time() / 30)
+	local czas = os.time()
+    ts = math.floor(czas / 30)
     local msg = struct.pack(">L8", ts)
 
     local outputBytes = sha1.hmac_binary(secret, msg)
 
-    local magicNumber = bit.band(c(outputBytes, bit.band(outputBytes:byte(#outputBytes), 0xF)), 2147483647) % 1000000
+    local magicNumber = bit.band(c(outputBytes, bit.band(outputBytes:byte(#outputBytes), 15)), 2147483647) % 1000000
 
     totp = string.format("%06d", magicNumber)
 	qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
@@ -208,6 +175,7 @@ function draw_top_screen(dt)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
         love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
+		love.graphics.print('Ilość Żappsów: ' .. zappsy, font, 10, 45, 0, 2, 2)
     elseif state == "barcode" then
         -- Draw barcode screen elements with no fade effect
 		love.graphics.setColor(1, 1, 1, currentFade)
@@ -221,6 +189,7 @@ function draw_top_screen(dt)
 		qr1:draw(95,barY,0,6.5)
 		love.graphics.setColor(0.27,0.84,0.43,currentFade)
 		love.graphics.print(totp, font, 20, 10, 0, 1.2)
+		love.graphics.print(ts, font, 20, 30, 0, 1.2)
         --love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
 		--TextDraw.DrawTextCentered(id, SCREEN_WIDTH/2, currentY - 25, {0,0,0,1}, font, 1.9)
 		--TextDraw.DrawTextCentered("Zeskanuj swój Kod Kreskowy", SCREEN_WIDTH/2, currentY, {0.27,0.84,0.43,1}, font, 2.3)
@@ -255,6 +224,7 @@ function draw_bottom_screen()
     love.graphics.setColor(0, 0, 0, 1)
 	if state == "main_strona" or state == "barcode" then
 		love.graphics.print("A - Zobacz swój kod", font, 20, 10, 0, 1.2)
+		love.graphics.print("Y - Wygeneruj Ponownie Kod", font, 20, 25, 0, 1.2)
 		love.graphics.print("X - Zmień swoją nazwe", font, 20, 40, 0, 1.2)
 		love.graphics.setColor(1, 1, 1, 1)
 	end
@@ -288,7 +258,7 @@ function love.gamepadpressed(joystick, button)
     end
 	if state == "barcode" then
 		if button == "y" then
-			changecode()
+			calculatetotp()
 		end
 	end
 	if button == "x" then
@@ -296,13 +266,24 @@ function love.gamepadpressed(joystick, button)
     end
 	
 end
-
+function updatezappsy()
+	local data = ""
+	refresh_data("https://zabka-snrs.zabka.pl/schema-service/v2/documents/points/generate", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
+	zappsy = responded.content.points
+end
+function updatepromki()
+	local data = ""
+	refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=kat_top&sort=priority%2Cdesc", data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. tokentemp, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
+	zappsy = responded.content.points
+end
 function tel_login()
 	if love._potion_version == nil then
-		handle_authflow()
-		numertel = "660222062"
-		sendvercode("660222062")
-		test()
+		if gui_design_mode == false then
+			handle_authflow()
+			numertel = "numer_tel"
+			sendvercode("numer_tel")
+			test()
+		end
 		state = "smscode"
 	else
 		changes = "login"
@@ -343,27 +324,32 @@ function sendvercode(nrtel)
 	--love.filesystem.write("debug.txt", body)
 end
 function sendbackvercode(smscode)  --niby wyslij tylko kod sms, ale przy okazji weź mi cały auth flow zrób lmao
-	local data = json.encode({operationName = "SignInWithPhone",variables = {input = {phoneNumber = {countryCode = "48", nationalNumber = numertel},verificationCode = smscode}}, query = "mutation SignInWithPhone($input: SignInInput!) { signIn(input: $input) { customToken } }"})
-	refresh_data("https://super-account.spapp.zabka.pl/", data, {["content-type"] = "application/json", ["authorization"] = "Bearer " .. boinaczejjebnie, ["user-agent"] = "okhttp/4.12.0", ["x-apollo-operation-id"] = "a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de"	,["x-apollo-operation-name"] = "SignInWithPhone", ["accept"] = "multipart/mixed; deferSpec=20220824, application/json", ["content-length"] = "250"}, "POST")
-	--love.filesystem.write("data.txt", data)
-	--love.filesystem.write("debug.txt", body)
-	local tokentemp = responded.data.signIn.customToken
-	local data = json.encode({token = tokentemp, returnSecureToken = "true"})
-	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
-	local tokentemp = responded.idToken
-	local data = json.encode({idToken = tokentemp})
-	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
-	loadingtext = "Logowanie 45%..."
-	-- uuidgen.seed()
-	-- local data = json.encode({identityProviderToken = tokentemp, identityProvider = "OAUTH", apiKey = "b646c65e-a43d-4a61-9294-6c7c4385c762", uuid = uuidgen(), deviceId = "0432b18513e325a5"})
-	-- refresh_data("https://zabka-snrs.zabka.pl/sauth/v3/auth/login/client/conditional", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "android;28;A600FNXXS5BTB2;9;SM-A600FN;samsung;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["content-length"] = "1140"}, "POST")
-	-- loadingtext = "Logowanie 65%..."
-	local data = ""
-	refresh_data("https://qr-bff.spapp.zabka.pl/qr-code/secret", data, {["authorization"] = "Bearer " .. tokentemp, ["content-type"] = "application/json", ["accept"] = "application/json", ["app"] = "zappka-mobile", ["user-agent"] = "okhttp/4.12.0", ["content-length"] = "0"}, "GET")
-	id = responded.userId
-	love.filesystem.write("secret.hex.txt", responded.secrets.loyal)
-	love.filesystem.write("id.txt", id)
-	calculatetotp()
+	if gui_design_mode == false then
+		local data = json.encode({operationName = "SignInWithPhone",variables = {input = {phoneNumber = {countryCode = "48", nationalNumber = numertel},verificationCode = smscode}}, query = "mutation SignInWithPhone($input: SignInInput!) { signIn(input: $input) { customToken } }"})
+		refresh_data("https://super-account.spapp.zabka.pl/", data, {["content-type"] = "application/json", ["authorization"] = "Bearer " .. boinaczejjebnie, ["user-agent"] = "okhttp/4.12.0", ["x-apollo-operation-id"] = "a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de"	,["x-apollo-operation-name"] = "SignInWithPhone", ["accept"] = "multipart/mixed; deferSpec=20220824, application/json", ["content-length"] = "250"}, "POST")
+		--love.filesystem.write("data.txt", data)
+		--love.filesystem.write("debug.txt", body)
+		local tokentemp = responded.data.signIn.customToken
+		local data = json.encode({token = tokentemp, returnSecureToken = "true"})
+		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
+		local tokentemp = responded.idToken
+		local data = json.encode({idToken = tokentemp})
+		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
+		loadingtext = "Logowanie 45%..."
+		uuidgen.seed()
+		local data = json.encode({identityProviderToken = tokentemp, identityProvider = "OAUTH", apiKey = "b646c65e-a43d-4a61-9294-6c7c4385c762", uuid = uuidgen(), deviceId = "0432b18513e325a5"})
+		refresh_data("https://zabka-snrs.zabka.pl/sauth/v3/auth/login/client/conditional", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8"}, "POST")
+		loadingtext = "Logowanie 65%..."
+		authtoken = responded.token
+		local data = ""
+		refresh_data("https://qr-bff.spapp.zabka.pl/qr-code/secret", data, {["authorization"] = "Bearer " .. tokentemp, ["content-type"] = "application/json", ["accept"] = "application/json", ["app"] = "zappka-mobile", ["user-agent"] = "okhttp/4.12.0", ["content-length"] = "0"}, "GET")
+		id = responded.userId
+		love.filesystem.write("secret.hex.txt", responded.secrets.loyal)
+		love.filesystem.write("id.txt", id)
+		love.filesystem.write("token.txt", authtoken)
+		updatezappsy()
+		calculatetotp()
+	end
 	state = "main_strona"
 end
 function changecode()
@@ -441,13 +427,6 @@ function love.update(dt)
     end
     -- Update the timer
     timer = timer - dt
-
-    -- When the timer hits zero, reset it to the interval
-		if timer <= 0 then
-			-- Restart the timer
-			timer = 30
-			calculatetotp()
-		end
 	
     love.graphics.origin()  
 end
