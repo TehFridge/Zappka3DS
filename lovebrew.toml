@@ -9,7 +9,7 @@
 title = "Zappka3DS"
 author = "TehFridge"
 description = "Jaka Parówa Wariacie?"
-version = "1.0.0"
+version = "1.2.0"
 icons = { ctr = "icon.png", hac = "", cafe = "" }
 
 ## --- Build Options --- ##
