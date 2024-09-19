@@ -13,14 +13,17 @@ local struct = require("lib.struct")
 local font = love.graphics.newFont("bold.ttf") -- Font lol
 local reference = 0
 local scrolltimerX = -100
+local option_sel = 1
 local promka_sel = 1
+local qrcal = "false"
+local imageload = "true"
 local promka_sel2 = 1
 local SCREEN_WIDTH = 400 
 local SCREEN_HEIGHT = 240
 local image = false
 local timer = 30
 local exists = "dunno"
-local intranet = false
+local intranet = "false"
 local state = ""
 local elapsedTime = 0
 local scrollDuration = 0.5  -- Total duration (in seconds) for the scrolling animation
@@ -60,6 +63,7 @@ end
 
 function love.load()
     -- Get the current time
+	optiontable = {imageload, qrcal, intranet}
 	generated_once = false
 	if existsname == false then -- Check whether the save file with the name exists or nah
         name = "3DS"
@@ -84,9 +88,9 @@ function love.load()
 		jsonread = false
 		updatezappsy() --taki test by zobaczyć czy masz neta
 		if not string.find(body, "uuid") then
-			intranet = true
+			optiontable[3] = "true"
 		else
-			intranet = false
+			optiontable[3] = "false"
 			jsonread = true
 			updatezappsy()
 			zappsy = responded.content.points
@@ -159,9 +163,13 @@ function calculatetotp() --NAPRAWIŁEM KURWA
 	local secret = (secretHex:gsub('..', function(hex)
         return string.char(tonumber(hex, 16))
     end))
-	if intranet == true then
-		czas = os.time()
-		print("intranet: " .. czas)
+	if optiontable[3] == "true" then
+		if optiontable[2] == "false" then
+			czas = os.time()
+			print("intranet: " .. czas)
+		else
+			czas = alt_kalibracja()
+		end
 	else
 		czas = updatetime_withserver()
 		print("internet: " .. czas)
@@ -256,7 +264,7 @@ function draw_top_screen(dt)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
         love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
-		if intranet == false then
+		if optiontable[3] == "false" then
 			love.graphics.print('Ilość Żappsów: ' .. zappsy, font, 10, 45, 0, 2, 2)
 		else
 			love.graphics.print('Ilość Żappsów: Chwilowy Brak Żappsów', font, 10, 45, 0, 2, 2)
@@ -360,6 +368,16 @@ function draw_top_screen(dt)
 		love.graphics.printf("Kup za " .. responded[promka_sel2].content.requireRedeemedPoints .. " Żappsów", 5, 175, 250, "center", 0, 1.55, 1.55)
 		TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", SCREEN_WIDTH/2, 205, {0.57,0.24,0.43, 1}, font, 2.2)
 		love.graphics.setColor(1, 1, 1, 1)
+	elseif state == "options" then
+        -- Draw barcode screen elements with no fade effect
+		love.graphics.setColor(1, 1, 1, 1)
+		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+		love.graphics.setColor(0.27,0.84,0.43,1)
+		love.graphics.print("->", font, 0, (option_sel * 26 ) + 10, 0, 3)
+		TextDraw.DrawTextCentered("Opcje", SCREEN_WIDTH/2, 30, {0.27,0.84,0.43, 1}, font, 3.2)
+		TextDraw.DrawTextCentered("Wczytywanie Obrazków: " .. optiontable[1], SCREEN_WIDTH/2, 60, {0.27,0.84,0.43, 1}, font, 1.9)
+		TextDraw.DrawTextCentered("Alt. Kalibracja Kodów QR: " .. optiontable[2], SCREEN_WIDTH/2, 85, {0.27,0.84,0.43, 1}, font, 1.9)
+		TextDraw.DrawTextCentered("Wymuś tryb Offline: " .. optiontable[3], SCREEN_WIDTH/2, 110, {0.27,0.84,0.43, 1}, font, 1.9)
     end
 end
 local function extract_p_tags(html)
@@ -398,13 +416,16 @@ function draw_bottom_screen()
 	else
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-		love.graphics.draw(kuponimage, 10, -20, 0, 0.3, 0.3)
+		if optiontable[1] == "true" then
+			love.graphics.draw(kuponimage, 10, -20, 0, 0.3, 0.3)
+		end
     end
     love.graphics.setColor(0, 0, 0, 1)
 	if state == "main_strona" or state == "barcode" then
 		love.graphics.print("A - Zobacz swój kod", font, 20, 10, 0, 1.2)
 		love.graphics.print("Y - Wygeneruj Ponownie Kod", font, 20, 25, 0, 1.2)
 		love.graphics.print("X - Zmień swoją nazwe", font, 20, 40, 0, 1.2)
+		love.graphics.print("Select - Opcje", font, 20, 55, 0, 1.2)
 		love.graphics.setColor(1, 1, 1, 1)
 	elseif state == "promki_sel" or state == "promki" then
 		love.graphics.print("A - Obczaj Promocje", font, 20, 10, 0, 1.2)
@@ -415,6 +436,18 @@ function draw_bottom_screen()
 end
 
 function love.gamepadpressed(joystick, button)
+	if state == "main_strona" or state == "options" then
+		if button == "select" then
+			if state == "options" then
+				sfx2:play()
+				state = "main_strona"
+				isFading = false
+			elseif state == "main_strona" then
+				sfx:play()
+				state = "options"
+			end
+		end
+	end
     if button == "a" then
         if state == "barcode" then
 		    sfx2:play()
@@ -435,12 +468,20 @@ function love.gamepadpressed(joystick, button)
 			image = false
 			updatepromki(promki_table[promka_sel])
 		elseif state == "promki" or state == "SSF" then
-			if love._potion_version == nil then
-				png_acja()
-			else
-				t3x_acja()
+			if optiontable[1] == "true" then
+				if love._potion_version == nil then
+					png_acja()
+				else
+					t3x_acja()
+				end
 			end
 			state = "bierzlubnie"
+		elseif state == "options" then
+			if optiontable[option_sel] == "true" then
+				optiontable[option_sel] = "false"
+			elseif optiontable[option_sel] == "false" then
+				optiontable[option_sel] = "true"
+			end
         end
     end
     if button == "start" then
@@ -454,7 +495,7 @@ function love.gamepadpressed(joystick, button)
 	if button == "x" then
         changename()
     end
-	if intranet == false then
+	if optiontable[3] == "false" then
 		if button == "rightshoulder" then
 			if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
 				sfx2:play()
@@ -488,6 +529,18 @@ function love.gamepadpressed(joystick, button)
 				isFading = true
 				elapsedTime = 0  -- Reset elapsed time for scrolling animation
 				elapsedTimeFade = 0
+			end
+		end
+	end
+	if state == "options" then
+		if button == "dpdown" then
+			if option_sel < 3 then
+				option_sel = option_sel + 1
+			end
+		end
+		if button == "dpup" then
+			if option_sel > 1 then
+				option_sel = option_sel - 1
 			end
 		end
 	end
@@ -537,10 +590,19 @@ function dawajmito(uuid_value, spowrotem)
 		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/batch-deactivate", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")	
 	end
 end
+function alt_kalibracja()
+	local lastserverczas = love.filesystem.read("LastCzasInternet.txt")
+	local lastlocalczas = love.filesystem.read("LastCzasIntranet.txt")
+	local currentlocalczas = os.time()
+	local dawajczas = lastserverczas + (currentlocalczas - lastlocalczas)
+	return dawajczas
+end
 function updatetime_withserver()
 	local data = ""
 	refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
-	dawajczas = isoToUnix(responded.serverTime) 
+	local dawajczas = isoToUnix(responded.serverTime) 
+	love.filesystem.write("LastCzasInternet.txt", dawajczas)
+	love.filesystem.write("LastCzasIntranet.txt", os.time())
 	return dawajczas
 end
 function t3x_acja()
