@@ -20,6 +20,7 @@ local imageload = "true"
 local promka_sel2 = 1
 local SCREEN_WIDTH = 400 
 local SCREEN_HEIGHT = 240
+local lookup = {19.194377939831, 19.451234900763, 19.659473904451, 19.818574461834, 19.928138904377, 19.987893378032, 19.997688527736, 19.957499870716, 19.867427857684, 19.727697621764, 19.538658415776, 19.300782739285, 19.014665157599, 18.681020815666, 18.300683650581, 17.874604307181, 17.403847761927, 16.889590661017, 16.333118379383, 15.735821807925, 15.099193877004, 14.424825824899, 13.714403220536, 12.969701750444, 12.192582780467, 11.384988703313, 10.548938083588, 9.6865206124343, 8.7998918843924, 7.8912680095345, 6.9629200743458, 6.0171684651899, 5.0563770685517, 4.0829473625525, 3.0993124145047, 2.1079307995114, 1.1112804553084, 0.1118524887109, -0.88785505085677, -1.8853434151833, -2.8781194028397, -3.8637015908846, -4.8396265371292, -5.8034549374598, -6.7527777228276, -7.685222080667, -8.598457385691, -9.4902010252409, -10.358224104629, -11.200357018214, -12.014494872287, -12.798602746207, -13.550720778645, -14.268969066215, -14.951552362255, -15.596764564008, -16.202992976988, -16.768722345882, -17.292538641893, -17.773132597079, -18.209302976841, -18.599959582382, -18.944125975639, -19.240941919867, -19.489665529785, -19.689675125899, -19.840470788383, -19.941675606614, -19.993036621252, -19.994425456509, -19.945838641021, -19.847397616521, -19.699348434306, -19.502061140227, -19.256028849774, -18.961866515543, -18.620309390173, -18.232211188596, -17.7985419542, -17.32038563422, -16.798937370437, -16.235500511946, -15.631483357459, -14.988395635299, -14.307844729855, -13.591531663969, -12.841246847255, -12.058865601015, -11.246343470909, -10.405711339107, -9.5390703481479, -8.64858664917, -7.736485987666, -6.8050481402769, -5.8566012165376, -4.8935158398159, -3.9181992219885, -2.9330891466648, -1.9406478759978, -0.94335599631063, 0.1118524887109, 1.1112804553084, 2.1079307995114, 3.0993124145047, 4.0829473625525, 5.0563770685517, 6.0171684651899, 6.9629200743458, 7.8912680095345, 8.7998918843924, 9.6865206124343, 10.548938083588, 11.384988703313, 12.192582780467, 12.969701750444, 13.714403220536, 14.424825824899, 15.099193877004, 15.735821807925, 16.333118379383, 16.889590661017, 17.403847761927, 17.874604307181, 18.300683650581, 18.681020815666, 19.014665157599}
 local image = false
 local timer = 30
 local exists = "dunno"
@@ -45,6 +46,10 @@ local music = love.audio.newSource("bgm/bgm.ogg", "stream")
 local sfx = love.audio.newSource("bgm/sfx.ogg", "static")
 local sfx2 = love.audio.newSource("bgm/sfx2.ogg", "static")
 local jsonread = true
+local numSegments = 30 -- Number of vertical slices (higher = smoother wave)
+local offsets = {}      -- Table to store the Y offsets for each slice
+-- Communication channels with the thread
+local offsetChannel = love.thread.getChannel("offsetChannel")
 name = "blank"
 codeforinput = "blank"
 loggedin = love.filesystem.exists("secret.hex.txt")
@@ -63,6 +68,7 @@ end
 
 function love.load()
     -- Get the current time
+	APP_VER = "v1.2_alpha_v3"
 	optiontable = {imageload, qrcal, intranet}
 	generated_once = false
 	if existsname == false then -- Check whether the save file with the name exists or nah
@@ -95,13 +101,13 @@ function love.load()
 			updatezappsy()
 			zappsy = responded.content.points
 			if updatetime_withserver() < 1727128800 then
-				promki_table = {"Prosto_z_Pieca", "kat_lody", "kat_napoje", "kat_wiekszyglod", "kat_piwo", "SSF_kupony"}
-				promki_nametable = {"Streetfood", "Lody", "Napoje", "Głodny?", "Może Piwko?", "Festiwal kuponów!"}
+				promki_table = {"Prosto_z_Pieca", "kat_lody", "kat_napoje", "kat_wiekszyglod", "Na_kanapke", "kat_piwo"}
+				promki_nametable = {"Streetfood", "Lody", "Napoje", "Głodny?", "Wszystko na Kanapkę.", "Może Piwko?"}
 				SSF = true
 				print("SSF true")
 			else
-				promki_table = {"Prosto_z_Pieca", "kat_lody", "kat_napoje", "kat_wiekszyglod", "kat_piwo"}
-				promki_nametable = {"Streetfood", "Lody", "Napoje", "Głodny?", "Może Piwko?"}
+				promki_table = {"Prosto_z_Pieca", "kat_lody", "kat_napoje", "kat_wiekszyglod", "Na_kanapke", "kat_piwo"}
+				promki_nametable = {"Streetfood", "Lody", "Napoje", "Głodny?", "Wszystko na Kanapkę.", "Może Piwko?"}
 				SSF = false
 				print("SSF false")
 			end
@@ -113,6 +119,7 @@ function love.load()
 		state = "main_strona"
     end
     --barcode = Barcode(codeforinput, 60, 3)
+	-- Initialize the offsets to 0
 	music:setLooping(true)
     music:play()
 end
@@ -205,7 +212,8 @@ function reloadmenu()
 end
 
 function refresh_data(url, request, inheaders, metoda)
-	--print(request)
+    print(url)
+	print(request)
 	--love.filesystem.write("data.txt", request)
     -- Headers
     -- local myheaders = {
@@ -231,8 +239,8 @@ function refresh_data(url, request, inheaders, metoda)
 	else
 		code, imagebody, headers = https.request(url, {data = request_body, method = metoda, headers = inheaders})
 	end
-	--print(body)
-	--print(code)
+	print(body)
+	print(code)
 	if jsonread == true then
 		responded = json.decode(body)
 	end
@@ -340,8 +348,9 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(promki_nametable[2], SCREEN_WIDTH/2 + barY - 20, 85, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(promki_nametable[3], SCREEN_WIDTH/2 + barY - 20, 110, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(promki_nametable[4], SCREEN_WIDTH/2 + barY - 20, 135, {0.27,0.84,0.43, 1}, font, 1.9)
+		TextDraw.DrawTextCentered(promki_nametable[5], SCREEN_WIDTH/2 + barY - 20, 160, {0.27,0.84,0.43, 1}, font, 1.9)
 		if piweczko == true then
-			TextDraw.DrawTextCentered(promki_nametable[5], SCREEN_WIDTH/2 + barY - 20, 160, {0.27,0.84,0.43, 1}, font, 1.9)
+			TextDraw.DrawTextCentered(promki_nametable[6], SCREEN_WIDTH/2 + barY - 20, 185, {0.27,0.84,0.43, 1}, font, 1.9)
 		end
         --love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
 		--TextDraw.DrawTextCentered(id, SCREEN_WIDTH/2, currentY - 25, {0,0,0,1}, font, 1.9)
@@ -366,7 +375,11 @@ function draw_top_screen(dt)
 		local opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
 		love.graphics.printf(opis, 5, 50, 250, "center", 0, 1.55, 1.55)
 		love.graphics.printf("Kup za " .. responded[promka_sel2].content.requireRedeemedPoints .. " Żappsów", 5, 175, 250, "center", 0, 1.55, 1.55)
-		TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", SCREEN_WIDTH/2, 205, {0.57,0.24,0.43, 1}, font, 2.2)
+		if niedlapsakurwa == false then
+			TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", SCREEN_WIDTH/2, 205, {0.57,0.24,0.43, 1}, font, 2.2)
+		else
+			TextDraw.DrawTextCentered("Wciśnij Select by Zwrócić Kupon", SCREEN_WIDTH/2, 205, {0.57,0.24,0.43, 1}, font, 2.2)
+		end
 		love.graphics.setColor(1, 1, 1, 1)
 	elseif state == "options" then
         -- Draw barcode screen elements with no fade effect
@@ -411,8 +424,25 @@ function draw_bottom_screen()
     SCREEN_WIDTH = 400
     SCREEN_HEIGHT = 240
     love.graphics.setColor(1, 1, 1, 1)
+	love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 	if state ~= "bierzlubnie" then
-		love.graphics.draw(bottomdark, 0, 0)
+		local imgWidth = bottomdark:getWidth()
+		local imgHeight = bottomdark:getHeight()
+
+		-- Draw the image distorted by a sine wave
+		for i = 0, numSegments - 1 do
+			local sliceWidth = imgWidth / numSegments
+			local x = i * sliceWidth
+			
+			-- Get the Y offset calculated in the thread
+			local yOffset = lookup[i + 1] / 2 or 0
+			
+			-- Define the quad for this slice of the image
+			local quad = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
+
+			-- Draw each slice of the image with its Y offset
+			love.graphics.draw(bottomdark, quad, x, love.graphics.getHeight() / 2 - imgHeight / 2 + yOffset)
+		end	
 	else
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -426,6 +456,7 @@ function draw_bottom_screen()
 		love.graphics.print("Y - Wygeneruj Ponownie Kod", font, 20, 25, 0, 1.2)
 		love.graphics.print("X - Zmień swoją nazwe", font, 20, 40, 0, 1.2)
 		love.graphics.print("Select - Opcje", font, 20, 55, 0, 1.2)
+		love.graphics.print("L - Aktualizuj liczbę żappsów", font, 20, 70, 0, 1.2)
 		love.graphics.setColor(1, 1, 1, 1)
 	elseif state == "promki_sel" or state == "promki" then
 		love.graphics.print("A - Obczaj Promocje", font, 20, 10, 0, 1.2)
@@ -433,11 +464,21 @@ function draw_bottom_screen()
 		love.graphics.print("DPad Dół - w dół lol", font, 20, 40, 0, 1.2)
 		love.graphics.setColor(1, 1, 1, 1)
 	end
+	love.graphics.setColor(0.27,0.84,0.43,1)
+	love.graphics.print(APP_VER, font, 5, 215, 0, 2, 2)
+	local memoryUsage = collectgarbage("count")
+    love.graphics.print(string.format("Memory Usage: %.2f KB", memoryUsage), font, 150, 215, 0, 1.2, 1.2)
 end
-
+function shiftRight(t)
+    local last = t[#t]
+    for i = #t, 2, -1 do
+        t[i] = t[i-1]
+    end
+    t[1] = last
+end
 function love.gamepadpressed(joystick, button)
 	if state == "main_strona" or state == "options" then
-		if button == "select" then
+		if button == "back" then
 			if state == "options" then
 				sfx2:play()
 				state = "main_strona"
@@ -468,6 +509,15 @@ function love.gamepadpressed(joystick, button)
 			image = false
 			updatepromki(promki_table[promka_sel])
 		elseif state == "promki" or state == "SSF" then
+			if responded[promka_sel2].content.possibleRedeems <= 0 then
+				niedlapsakurwa = false
+				print("nie aktywowany")
+				print(responded[promka_sel2].content.name)
+			else
+				niedlapsakurwa = true
+				print("aktywowany")
+				print(responded[promka_sel2].content.name)
+			end
 			if optiontable[1] == "true" then
 				if love._potion_version == nil then
 					png_acja()
@@ -475,6 +525,7 @@ function love.gamepadpressed(joystick, button)
 					t3x_acja()
 				end
 			end
+			
 			state = "bierzlubnie"
 		elseif state == "options" then
 			if optiontable[option_sel] == "true" then
@@ -499,6 +550,9 @@ function love.gamepadpressed(joystick, button)
 		if button == "rightshoulder" then
 			if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
 				sfx2:play()
+				jsonread = true
+				updatezappsy()
+				zappsy = responded.content.points
 				state = "main_strona"
 				--isFading = false
 			elseif state == "main_strona" then
@@ -514,21 +568,11 @@ function love.gamepadpressed(joystick, button)
 			end
 		end
 		if button == "leftshoulder" then
-			if state == "SSF" or state == "promki" or state == "bierzlubnie" then
-				sfx2:play()
-				state = "main_strona"
-				--isFading = false
-			elseif state == "main_strona" then
-				sfx:play()
-				updatessf()
-				limit = #responded
-				state = "SSF"
-				--isScrolling = true
-				--isFading = true
-				isScrolling = true
-				isFading = true
-				elapsedTime = 0  -- Reset elapsed time for scrolling animation
-				elapsedTimeFade = 0
+			if state == "main_strona" then
+				image = false
+				jsonread = true
+				updatezappsy()
+				zappsy = responded.content.points
 			end
 		end
 	end
@@ -546,7 +590,7 @@ function love.gamepadpressed(joystick, button)
 	end
 	if state == "promki_sel" then
 		if button == "dpdown" then
-			if promka_sel < 5 then
+			if promka_sel < 6 then
 				promka_sel = promka_sel + 1
 			end
 		end
@@ -571,23 +615,42 @@ function love.gamepadpressed(joystick, button)
 	if state == "bierzlubnie" then
 		if button == "back" then
 			if niedlapsakurwa == false then
-				local uuid = responded[promka_sel2].content.uuid
+				local uuid = responded[promka_sel2].uuid
 				dawajmito(uuid, false)
+				state = "main_strona"
 			else
-				local uuid = responded[promka_sel2].content.uuid
+				local uuid = responded[promka_sel2].uuid
 				dawajmito(uuid, true)
+				state = "main_strona"
 			end
 		end
 	end
 end
 function dawajmito(uuid_value, spowrotem)
-	jsonread = false
 	if spowrotem == false then
-		local data = json.encode({key = "uuid", uuid_value = value})
-		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/batch-activate", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
+		jsonread = false
+		local data = json.encode({key = "uuid", value = uuid_value})
+		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/batch-activate", "[" .. data .. "]", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "POST")
+		if code == 200 then
+			print("success act")
+		end
+		image = false
+		jsonread = true
+		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/get-item-for-client/uuid/" .. uuid_value, "", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
+		updatezappsy()
+		zappsy = responded.content.points
 	else
-        local data = json.encode({key = "uuid", uuid_value = value})
-		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/batch-deactivate", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")	
+		jsonread = false
+        local data = json.encode({key = "uuid", value = uuid_value})
+		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/batch-deactivate", "[" .. data .. "]", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "POST")	
+		if code == 200 then
+			print("success deact")
+		end
+		image = false
+		jsonread = true
+		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/get-item-for-client/uuid/" .. uuid_value, "", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
+		updatezappsy()
+		zappsy = responded.content.points
 	end
 end
 function alt_kalibracja()
@@ -595,6 +658,8 @@ function alt_kalibracja()
 	local lastlocalczas = love.filesystem.read("LastCzasIntranet.txt")
 	local currentlocalczas = os.time()
 	local dawajczas = lastserverczas + (currentlocalczas - lastlocalczas)
+	love.filesystem.write("LastCzasInternet.txt", dawajczas)
+	love.filesystem.write("LastCzasIntranet.txt", os.time())
 	return dawajczas
 end
 function updatetime_withserver()
@@ -613,15 +678,19 @@ function t3x_acja()
 	kuponimage = love.graphics.newImage("temp.t3x")
 end
 function png_acja()
-	local data = ""
-	image = true
-	refresh_data(responded[promka_sel2].content.images[1].url, data, {}, "GET")
-	kuponimageData = love.filesystem.write("temp.png", imagebody)
-	kuponimage = love.graphics.newImage("temp.png")
+	if state ~= "SSF" then
+		local data = ""
+		image = true
+		refresh_data(responded[promka_sel2].content.images[1].url, data, {}, "GET")
+		kuponimageData = love.filesystem.write("temp.png", imagebody)
+		kuponimage = love.graphics.newImage("temp.png")
+	else	
+		kuponimage = love.graphics.newImage("temp.png")
+	end
 end
 function updatezappsy()
 	local data = ""
-	refresh_data("https://zabka-snrs.zabka.pl/schema-service/v2/documents/points/generate", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
+	refresh_data("https://zabka-snrs.zabka.pl/schema-service/v2/documents/points/generate", data, {["Cache-Control"] = "no-cache", ["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
 end
 function updatessf()
 	local data = ""
@@ -740,6 +809,7 @@ function love.textinput(text)
 	end
 end
 function love.update(dt)
+	shiftRight(lookup)
     elapsedTime = elapsedTime + dt
 	local time = love.timer.getTime()  -- Get current time in seconds
 	if scrolltimerX <= 550 then
@@ -768,6 +838,7 @@ function love.update(dt)
     end
     -- Update the timer
     timer = timer - dt
-	
+	    -- Increment the timer by the time elapsed since the last frame
     love.graphics.origin()  
+	collectgarbage("collect")
 end
