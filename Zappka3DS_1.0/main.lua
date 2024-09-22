@@ -38,7 +38,7 @@ local isScrolling = false
 local isFading = false
 local currentY = startY
 local banner = love.graphics.newImage("assets/banner.png")
-local bottomdark = love.graphics.newImage("assets/frog.png")
+local bottomdark = love.graphics.newImage("assets/logo.png")
 local elapsedTimeFade = 0
 local fadeDuration = 0.2
 local stateChanged = false
@@ -46,10 +46,12 @@ local music = love.audio.newSource("bgm/bgm.ogg", "stream")
 local sfx = love.audio.newSource("bgm/sfx.ogg", "static")
 local sfx2 = love.audio.newSource("bgm/sfx2.ogg", "static")
 local jsonread = true
-local numSegments = 30 -- Number of vertical slices (higher = smoother wave)
+local numSegments = 100 -- Number of vertical slices (higher = smoother wave)
 local offsets = {}      -- Table to store the Y offsets for each slice
 -- Communication channels with the thread
 local offsetChannel = love.thread.getChannel("offsetChannel")
+local buttons = {}
+
 name = "blank"
 codeforinput = "blank"
 loggedin = love.filesystem.exists("secret.hex.txt")
@@ -68,7 +70,7 @@ end
 
 function love.load()
     -- Get the current time
-	APP_VER = "v1.2_alpha_v3"
+	APP_VER = "v1.2_beta_v1"
 	optiontable = {imageload, qrcal, intranet}
 	generated_once = false
 	if existsname == false then -- Check whether the save file with the name exists or nah
@@ -120,6 +122,10 @@ function love.load()
     end
     --barcode = Barcode(codeforinput, 60, 3)
 	-- Initialize the offsets to 0
+	    -- Create buttons with images
+    table.insert(buttons, createButton(195, 195, "assets/qrbutton.png", barcodenmachen, "main_strona", "barcode"))
+	table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
+	table.insert(buttons, createButton(5, 5, "assets/exit.png", exitenmachen, "promki", "bierzlubnie"))
 	music:setLooping(true)
     music:play()
 end
@@ -156,6 +162,28 @@ local function isoToUnix(isoDate)
 
     return totalSeconds
 end
+function createButton(x, y, imagePath, callback, statename, secstatename, thrdstate)
+    local image = love.graphics.newImage(imagePath) -- Load the image
+    return {
+        x = x,
+        y = y,
+        width = image:getWidth(),
+        height = image:getHeight(),
+        image = image,
+        callback = callback,
+        draw = function(self)
+            -- Draw the image as the button
+			if state == statename or state == secstatename then
+				love.graphics.draw(self.image, self.x, self.y)
+			end
+        end,
+        isTouched = function(self, touchX, touchY)
+            -- Check if touch is within button boundaries
+            return touchX > self.x and touchX < self.x + self.width and
+                   touchY > self.y and touchY < self.y + self.height
+        end
+    }
+end
 function calculatetotp() --NAPRAWIŁEM KURWA
 	local javaIntMax = 2147483647
 
@@ -190,14 +218,16 @@ function calculatetotp() --NAPRAWIŁEM KURWA
     local msg = struct.pack(">L8", ts)
 
     local outputBytes = sha1.hmac_binary(secret, msg)
-
-    local magicNumber = bit.band(c(outputBytes, bit.band(outputBytes:byte(#outputBytes), 15)), 2147483647) % 1000000
-
-    totp = string.format("%06d", magicNumber)
-	print(totp)
-	print("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
-	qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
-	generated_once = true
+	if outputBytes ~= nil then
+		local magicNumber = bit.band(c(outputBytes, bit.band(outputBytes:byte(#outputBytes), 15)), 2147483647) % 1000000		
+		totp = string.format("%06d", magicNumber)
+		print(totp)
+		print("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
+		qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
+		generated_once = true
+	else
+		qr1 = nil
+	end
 end
 function love.draw(screen)
     if screen == "bottom" then
@@ -270,17 +300,26 @@ function draw_top_screen(dt)
         -- Draw main screen elements with fade effect
 		love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-		love.graphics.setColor(0.27,0.84,0.43,1)
-        love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
-		if optiontable[3] == "false" then
-			love.graphics.print('Ilość Żappsów: ' .. zappsy, font, 10, 45, 0, 2, 2)
-		else
-			love.graphics.print('Ilość Żappsów: Chwilowy Brak Żappsów', font, 10, 45, 0, 2, 2)
-			love.graphics.setColor(0.77,0.04,0.03,1)
-			love.graphics.print('! Brak Dostępu do Internetu !', font, 0, 195, 0, 1.2, 1.2)
-			love.graphics.print('Kody QR mogą się źle generować', font, 0, 210, 0, 1.2, 1.2)
-			love.graphics.print('(nwm czas w 3dsach jakiś zjebany jest)', font, 0, 225, 0, 1.2, 1.2)
-		end
+		TextDraw.DrawTextCentered('Cześć, ' .. name, SCREEN_WIDTH/2, 45, {0.27,0.84,0.43, 1}, font, 4.5)
+		love.graphics.print(APP_VER, font, 5, 205, 0, 2, 2)
+		local imgWidth = bottomdark:getWidth()
+		local imgHeight = bottomdark:getHeight()
+
+		-- Draw the image distorted by a sine wave
+		for i = 0, numSegments - 1 do
+			local sliceWidth = imgWidth / numSegments
+			local x = i * sliceWidth
+			
+			-- Get the Y offset calculated in the thread
+			local yOffset = lookup[i + 1] / 2 or 0
+			
+			-- Define the quad for this slice of the image
+			local quad = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
+
+			-- Draw each slice of the image with its Y offset
+			love.graphics.setColor(1, 1, 1, 1)
+			love.graphics.draw(bottomdark, quad, x, love.graphics.getHeight() / 2 - imgHeight / 2 + yOffset)
+		end	
     elseif state == "barcode" then
         -- Draw barcode screen elements with no fade effect
 		love.graphics.setColor(1, 1, 1, currentFade)
@@ -292,9 +331,15 @@ function draw_top_screen(dt)
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.setColor(0, 0, 0, 1)
 		if generated_once == true then
-			qr1:draw(95,barY,0,6.5)
+			if qr1 then
+				qr1:draw(95,barY,0,6.5)
+			else
+				love.graphics.printf("Coś poszło nie tak!", font, 5, barY + 90, 250, "center", 0, 1.55, 1.55)
+				love.graphics.printf("Spróbuj ponownie póżniej.", font, 5, barY + 110, 250, "center", 0, 1.55, 1.55)
+			end
 		else
 			love.graphics.printf("Wygeneruj Kod QR", font, 5, barY + 90, 250, "center", 0, 1.55, 1.55)
+			love.graphics.printf("Wciśnij Y", font, 5, barY + 110, 250, "center", 0, 1.55, 1.55)
 		end
 		love.graphics.setColor(0.27,0.84,0.43,currentFade)
 		--love.graphics.print(totp, font, 20, 10, 0, 1.2)
@@ -313,6 +358,11 @@ function draw_top_screen(dt)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		TextDraw.DrawTextCentered('By wprowadzić kod SMS', 200, 80, {0.27,0.84,0.43,1}, font, 2.7)
 		TextDraw.DrawTextCentered('Wciśnij A', 200, 140, {0.27,0.84,0.43,1}, font, 3)
+	elseif state == "restartplz" then
+		love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+		TextDraw.DrawTextCentered('Zrestartuj Aplikacje', 200, 80, {0.27,0.84,0.43,1}, font, 2.7)
+		TextDraw.DrawTextCentered('(nic się nie zjebało) Wciśnij Start', 200, 140, {0.27,0.84,0.43,1}, font, 3)
 	elseif state == "loading" then
 		love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -370,17 +420,9 @@ function draw_top_screen(dt)
         -- Draw barcode screen elements with no fade effect
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-		love.graphics.setColor(0.27,0.84,0.43,1)
-		TextDraw.DrawTextCentered(responded[promka_sel2].content.name, SCREEN_WIDTH/2, 35, {0.27,0.84,0.43, 1}, font, 3.2)
-		local opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
-		love.graphics.printf(opis, 5, 50, 250, "center", 0, 1.55, 1.55)
-		love.graphics.printf("Kup za " .. responded[promka_sel2].content.requireRedeemedPoints .. " Żappsów", 5, 175, 250, "center", 0, 1.55, 1.55)
-		if niedlapsakurwa == false then
-			TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", SCREEN_WIDTH/2, 205, {0.57,0.24,0.43, 1}, font, 2.2)
-		else
-			TextDraw.DrawTextCentered("Wciśnij Select by Zwrócić Kupon", SCREEN_WIDTH/2, 205, {0.57,0.24,0.43, 1}, font, 2.2)
+		if optiontable[1] == "true" then
+			love.graphics.draw(kuponimage, 60, -20, 0, 0.3, 0.3)
 		end
-		love.graphics.setColor(1, 1, 1, 1)
 	elseif state == "options" then
         -- Draw barcode screen elements with no fade effect
 		love.graphics.setColor(1, 1, 1, 1)
@@ -425,49 +467,132 @@ function draw_bottom_screen()
     SCREEN_HEIGHT = 240
     love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-	if state ~= "bierzlubnie" then
-		local imgWidth = bottomdark:getWidth()
-		local imgHeight = bottomdark:getHeight()
+	-- if state ~= "bierzlubnie" then
+		-- local imgWidth = bottomdark:getWidth()
+		-- local imgHeight = bottomdark:getHeight()
 
-		-- Draw the image distorted by a sine wave
-		for i = 0, numSegments - 1 do
-			local sliceWidth = imgWidth / numSegments
-			local x = i * sliceWidth
+		-- -- Draw the image distorted by a sine wave
+		-- for i = 0, numSegments - 1 do
+			-- local sliceWidth = imgWidth / numSegments
+			-- local x = i * sliceWidth
 			
-			-- Get the Y offset calculated in the thread
-			local yOffset = lookup[i + 1] / 2 or 0
+			-- -- Get the Y offset calculated in the thread
+			-- local yOffset = lookup[i + 1] / 2 or 0
 			
-			-- Define the quad for this slice of the image
-			local quad = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
+			-- -- Define the quad for this slice of the image
+			-- local quad = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
 
-			-- Draw each slice of the image with its Y offset
-			love.graphics.draw(bottomdark, quad, x, love.graphics.getHeight() / 2 - imgHeight / 2 + yOffset)
-		end	
-	else
-		love.graphics.setColor(1, 1, 1, 1)
-		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-		if optiontable[1] == "true" then
-			love.graphics.draw(kuponimage, 10, -20, 0, 0.3, 0.3)
+			-- -- Draw each slice of the image with its Y offset
+			-- love.graphics.draw(bottomdark, quad, x, love.graphics.getHeight() / 2 - imgHeight / 2 + yOffset)
+		-- end	
+	-- else
+		-- love.graphics.setColor(1, 1, 1, 1)
+		-- love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+		-- if optiontable[1] == "true" then
+			-- love.graphics.draw(kuponimage, 10, -20, 0, 0.3, 0.3)
+		-- end
+    -- end
+	if loggedin == true then
+		if optiontable[3] == "false" then
+			TextDraw.DrawTextCentered('Ilość Żappsów: ' .. zappsy, 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.7)
+		else
+			TextDraw.DrawTextCentered('Ilość Żappsów: Chwilowy Brak Żappsów', 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.7)
+			love.graphics.print('! Brak Dostępu do Internetu !', font, 0, 195, 0, 1.2, 1.2)
+			love.graphics.print('Kody QR mogą się źle generować', font, 0, 210, 0, 1.2, 1.2)
+			love.graphics.print('(nwm czas w 3dsach jakiś zjebany jest)', font, 0, 225, 0, 1.2, 1.2)
+		end
+		if state == "main_strona" or state == "barcode" then
+			-- love.graphics.print("A - Zobacz swój kod", font, 20, 10, 0, 1.2)
+			-- love.graphics.print("Y - Wygeneruj Ponownie Kod", font, 20, 25, 0, 1.2)
+			-- love.graphics.print("X - Zmień swoją nazwe", font, 20, 40, 0, 1.2)
+			-- love.graphics.print("Select - Opcje", font, 20, 55, 0, 1.2)
+			-- love.graphics.print("L - Aktualizuj liczbę żappsów", font, 20, 70, 0, 1.2)
+			-- love.graphics.setColor(1, 1, 1, 1)
+		elseif state == "promki_sel" or state == "promki" then
+			-- love.graphics.print("A - Obczaj Promocje", font, 20, 10, 0, 1.2)
+			-- love.graphics.print("DPad Góra - w góre lol", font, 20, 25, 0, 1.2)
+			-- love.graphics.print("DPad Dół - w dół lol", font, 20, 40, 0, 1.2)
+			-- love.graphics.setColor(1, 1, 1, 1)
+		elseif state == "bierzlubnie" then
+			-- Draw barcode screen elements with no fade effect
+			love.graphics.setColor(1, 1, 1, 1)
+			love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+			love.graphics.setColor(0.27,0.84,0.43,1)
+			TextDraw.DrawTextCentered(responded[promka_sel2].content.name, 325/2, 35, {0.27,0.84,0.43, 1}, font, 2.7)
+			local opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
+			love.graphics.printf(opis, 10, 50, 250, "center", 0, 1.2, 1.2)
+			TextDraw.DrawTextCentered("Kup za " .. responded[promka_sel2].content.requireRedeemedPoints .. " Żappsów", 320/2, 175, {0.27,0.84,0.43, 1}, font, 1.8)
+			if niedlapsakurwa == false then
+				TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", 320/2, 205, {0.57,0.24,0.43, 1}, font, 2)
+			else
+				TextDraw.DrawTextCentered("Wciśnij Select by Zwrócić Kupon", 320/2, 205, {0.57,0.24,0.43, 1}, font, 2)
+			end
+			love.graphics.setColor(1, 1, 1, 1)
+		end
+		love.graphics.setColor(0.27,0.84,0.43,1)
+		for _, button in ipairs(buttons) do
+			love.graphics.setColor(1, 1, 1, 1)
+			button:draw()
 		end
     end
-    love.graphics.setColor(0, 0, 0, 1)
-	if state == "main_strona" or state == "barcode" then
-		love.graphics.print("A - Zobacz swój kod", font, 20, 10, 0, 1.2)
-		love.graphics.print("Y - Wygeneruj Ponownie Kod", font, 20, 25, 0, 1.2)
-		love.graphics.print("X - Zmień swoją nazwe", font, 20, 40, 0, 1.2)
-		love.graphics.print("Select - Opcje", font, 20, 55, 0, 1.2)
-		love.graphics.print("L - Aktualizuj liczbę żappsów", font, 20, 70, 0, 1.2)
-		love.graphics.setColor(1, 1, 1, 1)
-	elseif state == "promki_sel" or state == "promki" then
-		love.graphics.print("A - Obczaj Promocje", font, 20, 10, 0, 1.2)
-		love.graphics.print("DPad Góra - w góre lol", font, 20, 25, 0, 1.2)
-		love.graphics.print("DPad Dół - w dół lol", font, 20, 40, 0, 1.2)
-		love.graphics.setColor(1, 1, 1, 1)
-	end
-	love.graphics.setColor(0.27,0.84,0.43,1)
-	love.graphics.print(APP_VER, font, 5, 215, 0, 2, 2)
 	local memoryUsage = collectgarbage("count")
-    love.graphics.print(string.format("Memory Usage: %.2f KB", memoryUsage), font, 150, 215, 0, 1.2, 1.2)
+    --love.graphics.print(string.format("Memory Usage: %.2f KB", memoryUsage), font, 150, 215, 0, 1.2, 1.2)
+end
+function exitenmachen()
+	if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
+		sfx2:play()
+		jsonread = true
+		image = false
+		updatezappsy()
+		zappsy = responded.content.points
+		state = "main_strona"
+		--isFading = false
+	elseif state == "main_strona" then
+		sfx:play()
+		--updatepromki()
+		state = "promki_sel" 
+		--isScrolling = true
+		--isFading = true
+		isScrolling = true
+		isFading = true
+		elapsedTime = 0  -- Reset elapsed time for scrolling animation
+		elapsedTimeFade = 0
+	end
+end
+function kuponmachen()
+	if state == "promki_sel" then
+		sfx2:play()
+		jsonread = true
+		image = false
+		updatezappsy()
+		zappsy = responded.content.points
+		state = "main_strona"
+		--isFading = false
+	elseif state == "main_strona" then
+		sfx:play()
+		--updatepromki()
+		state = "promki_sel" 
+		--isScrolling = true
+		--isFading = true
+		isScrolling = true
+		isFading = true
+		elapsedTime = 0  -- Reset elapsed time for scrolling animation
+		elapsedTimeFade = 0
+	end
+end
+function barcodenmachen()
+	if state == "barcode" then
+		sfx2:play()
+		state = "main_strona"
+		isFading = false
+	elseif state == "main_strona" then
+		sfx:play()
+		state = "barcode"
+		isScrolling = true
+		isFading = true
+		elapsedTime = 0  -- Reset elapsed time for scrolling animation
+		elapsedTimeFade = 0
+	end
 end
 function shiftRight(t)
     local last = t[#t]
@@ -475,6 +600,14 @@ function shiftRight(t)
         t[i] = t[i-1]
     end
     t[1] = last
+end
+function love.touchpressed(id, x, y, dx, dy, pressure)
+    -- Check if any button is pressed
+    for _, button in ipairs(buttons) do
+        if button:isTouched(x, y) then
+            button.callback() -- Call the button's callback
+        end
+    end
 end
 function love.gamepadpressed(joystick, button)
 	if state == "main_strona" or state == "options" then
@@ -551,6 +684,7 @@ function love.gamepadpressed(joystick, button)
 			if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
 				sfx2:play()
 				jsonread = true
+				image = false
 				updatezappsy()
 				zappsy = responded.content.points
 				state = "main_strona"
@@ -674,19 +808,14 @@ function t3x_acja()
 	local data = json.encode({url = responded[promka_sel2].content.images[1].url})
 	image = true
 	refresh_data("https://api.szprink.xyz/t3x/convert", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json"}, "POST")
-	kuponimageData = love.filesystem.write("temp.t3x", imagebody)
-	kuponimage = love.graphics.newImage("temp.t3x")
+	local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.t3x"))
+	kuponimage = love.graphics.newImage(imageData)
 end
 function png_acja()
-	if state ~= "SSF" then
-		local data = ""
-		image = true
-		refresh_data(responded[promka_sel2].content.images[1].url, data, {}, "GET")
-		kuponimageData = love.filesystem.write("temp.png", imagebody)
-		kuponimage = love.graphics.newImage("temp.png")
-	else	
-		kuponimage = love.graphics.newImage("temp.png")
-	end
+	image = true
+	refresh_data(responded[promka_sel2].content.images[1].url, data, {}, "GET")
+	local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.png"))
+	kuponimage = love.graphics.newImage(imageData)
 end
 function updatezappsy()
 	local data = ""
@@ -778,7 +907,7 @@ function sendbackvercode(smscode)  --niby wyslij tylko kod sms, ale przy okazji 
 		zappsy = responded.content.points
 		calculatetotp()
 	end
-	state = "main_strona"
+	state = "restartplz"
 end
 function changecode()
     changes = "bar"
@@ -809,7 +938,9 @@ function love.textinput(text)
 	end
 end
 function love.update(dt)
-	shiftRight(lookup)
+	if state == "main_strona" then
+		shiftRight(lookup)
+	end
     elapsedTime = elapsedTime + dt
 	local time = love.timer.getTime()  -- Get current time in seconds
 	if scrolltimerX <= 550 then
