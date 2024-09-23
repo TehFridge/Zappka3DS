@@ -10,7 +10,6 @@ local sha1 = require("sha1")
 local struct = require("lib.struct")
 --local ffi = require("ffi")
 --local Barcode = require("lib.bar128") -- an awesome Code128 library made by Nawias (POLSKA GUROM)
-local font = love.graphics.newFont("bold.ttf") -- Font lol
 local reference = 0
 local scrolltimerX = -100
 local option_sel = 1
@@ -60,9 +59,12 @@ love.graphics.setDefaultFilter("nearest")
 gui_design_mode = false
 
 if love._potion_version == nil then
+	font = love.graphics.newFont("bold.ttf", 12) -- Font lol
 	local nest = require("nest").init({ console = "3ds", scale = 1 })
 	love._nest = true
     love._console_name = "3DS"
+else
+	font = love.graphics.newFont("bold.ttf", 13) -- Font lol
 end
 
 
@@ -70,7 +72,7 @@ end
 
 function love.load()
     -- Get the current time
-	APP_VER = "v1.2_beta_v1"
+	APP_VER = "v1.2_beta_v2"
 	optiontable = {imageload, qrcal, intranet}
 	generated_once = false
 	if existsname == false then -- Check whether the save file with the name exists or nah
@@ -117,6 +119,8 @@ function love.load()
 			if responded.content.alcohol_eligibility == "1" then
 				piweczko = true
 			end
+			refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=kat_top&sort=priority%2Cdesc",  data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
+			topki = responded
 	    end
 		state = "main_strona"
     end
@@ -218,6 +222,7 @@ function calculatetotp() --NAPRAWIŁEM KURWA
     local msg = struct.pack(">L8", ts)
 
     local outputBytes = sha1.hmac_binary(secret, msg)
+	print(outputBytes)
 	if outputBytes ~= nil then
 		local magicNumber = bit.band(c(outputBytes, bit.band(outputBytes:byte(#outputBytes), 15)), 2147483647) % 1000000		
 		totp = string.format("%06d", magicNumber)
@@ -226,6 +231,7 @@ function calculatetotp() --NAPRAWIŁEM KURWA
 		qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
 		generated_once = true
 	else
+		generated_once = true
 		qr1 = nil
 	end
 end
@@ -501,13 +507,15 @@ function draw_bottom_screen()
 			love.graphics.print('Kody QR mogą się źle generować', font, 0, 210, 0, 1.2, 1.2)
 			love.graphics.print('(nwm czas w 3dsach jakiś zjebany jest)', font, 0, 225, 0, 1.2, 1.2)
 		end
-		if state == "main_strona" or state == "barcode" then
-			-- love.graphics.print("A - Zobacz swój kod", font, 20, 10, 0, 1.2)
-			-- love.graphics.print("Y - Wygeneruj Ponownie Kod", font, 20, 25, 0, 1.2)
-			-- love.graphics.print("X - Zmień swoją nazwe", font, 20, 40, 0, 1.2)
-			-- love.graphics.print("Select - Opcje", font, 20, 55, 0, 1.2)
-			-- love.graphics.print("L - Aktualizuj liczbę żappsów", font, 20, 70, 0, 1.2)
-			-- love.graphics.setColor(1, 1, 1, 1)
+		if state == "main_strona" then
+			limit = 5
+			love.graphics.print("->", font, 0, (promka_sel2 * 20 ) + 50, 0, 2)
+			TextDraw.DrawText("Nasze Sztosy", 20, 55, {0.27,0.84,0.43, 1}, font, 1.9)
+			TextDraw.DrawText(topki[3].content.name, 20, 75, {0.27,0.84,0.43, 1}, font, 1.5)
+			TextDraw.DrawText(topki[4].content.name, 20, 95, {0.27,0.84,0.43, 1}, font, 1.5)
+			TextDraw.DrawText(topki[5].content.name, 20, 115, {0.27,0.84,0.43, 1}, font, 1.5)
+			TextDraw.DrawText(topki[6].content.name, 20, 135, {0.27,0.84,0.43, 1}, font, 1.5)
+			TextDraw.DrawText(topki[7].content.name, 20, 155, {0.27,0.84,0.43, 1}, font, 1.5)
 		elseif state == "promki_sel" or state == "promki" then
 			-- love.graphics.print("A - Obczaj Promocje", font, 20, 10, 0, 1.2)
 			-- love.graphics.print("DPad Góra - w góre lol", font, 20, 25, 0, 1.2)
@@ -518,10 +526,9 @@ function draw_bottom_screen()
 			love.graphics.setColor(1, 1, 1, 1)
 			love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 			love.graphics.setColor(0.27,0.84,0.43,1)
-			TextDraw.DrawTextCentered(responded[promka_sel2].content.name, 325/2, 35, {0.27,0.84,0.43, 1}, font, 2.7)
-			local opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
+			TextDraw.DrawTextCentered(textname, 325/2, 35, {0.27,0.84,0.43, 1}, font, 2.7)
 			love.graphics.printf(opis, 10, 50, 250, "center", 0, 1.2, 1.2)
-			TextDraw.DrawTextCentered("Kup za " .. responded[promka_sel2].content.requireRedeemedPoints .. " Żappsów", 320/2, 175, {0.27,0.84,0.43, 1}, font, 1.8)
+			TextDraw.DrawTextCentered("Kup za " .. punktykurwa .. " Żappsów", 320/2, 175, {0.27,0.84,0.43, 1}, font, 1.8)
 			if niedlapsakurwa == false then
 				TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", 320/2, 205, {0.57,0.24,0.43, 1}, font, 2)
 			else
@@ -623,42 +630,57 @@ function love.gamepadpressed(joystick, button)
 		end
 	end
     if button == "a" then
-        if state == "barcode" then
-		    sfx2:play()
-            state = "main_strona"
-			isFading = false
-        elseif state == "main_strona" then
-		    sfx:play()
-            state = "barcode"
-			isScrolling = true
-			isFading = true
-            elapsedTime = 0  -- Reset elapsed time for scrolling animation
-			elapsedTimeFade = 0
-		elseif state == "login" then
+		if state == "login" then
 			tel_login()
 		elseif state == "smscode" then
 			smskod()
 		elseif state == "promki_sel" then
 			image = false
 			updatepromki(promki_table[promka_sel])
-		elseif state == "promki" or state == "SSF" then
-			if responded[promka_sel2].content.possibleRedeems <= 0 then
-				niedlapsakurwa = false
-				print("nie aktywowany")
-				print(responded[promka_sel2].content.name)
-			else
-				niedlapsakurwa = true
-				print("aktywowany")
-				print(responded[promka_sel2].content.name)
-			end
-			if optiontable[1] == "true" then
-				if love._potion_version == nil then
-					png_acja()
+		elseif state == "promki" or state == "SSF" or state == "main_strona" then
+			if state == "main_strona" then
+				if topki[promka_sel2 + 2].content.possibleRedeems <= 0 then
+					niedlapsakurwa = false
+					print("nie aktywowany")
+					print(topki[promka_sel2 + 2].content.name)
 				else
-					t3x_acja()
+					niedlapsakurwa = true
+					print("aktywowany")
+					print(topki[promka_sel2 + 2].content.name)
 				end
+				if optiontable[1] == "true" then
+					if love._potion_version == nil then
+						png_acja()
+					else
+						t3x_acja()
+					end
+				end
+				textname = topki[promka_sel2 + 2].content.name
+				opis = limitchar(topki[promka_sel2 + 2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
+				punktykurwa = topki[promka_sel2 + 2].content.requireRedeemedPoints
+				uuid = topki[promka_sel2 + 2].uuid
+			else
+				if responded[promka_sel2].content.possibleRedeems <= 0 then
+					niedlapsakurwa = false
+					print("nie aktywowany")
+					print(responded[promka_sel2].content.name)
+				else
+					niedlapsakurwa = true
+					print("aktywowany")
+					print(responded[promka_sel2].content.name)
+				end
+				if optiontable[1] == "true" then
+					if love._potion_version == nil then
+						png_acja()
+					else
+						t3x_acja()
+					end
+				end
+				textname = responded[promka_sel2].content.name
+				opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
+				punktykurwa = responded[promka_sel2].content.requireRedeemedPoints
+				uuid = responded[promka_sel2].uuid
 			end
-			
 			state = "bierzlubnie"
 		elseif state == "options" then
 			if optiontable[option_sel] == "true" then
@@ -734,7 +756,7 @@ function love.gamepadpressed(joystick, button)
 			end
 		end
 	end
-	if state == "promki" or state == "SSF" then
+	if state == "promki" or state == "SSF" or state == "main_strona" then
 		if button == "dpdown" then
 			if promka_sel2 < limit then
 				promka_sel2 = promka_sel2 + 1
@@ -749,11 +771,9 @@ function love.gamepadpressed(joystick, button)
 	if state == "bierzlubnie" then
 		if button == "back" then
 			if niedlapsakurwa == false then
-				local uuid = responded[promka_sel2].uuid
 				dawajmito(uuid, false)
 				state = "main_strona"
 			else
-				local uuid = responded[promka_sel2].uuid
 				dawajmito(uuid, true)
 				state = "main_strona"
 			end
@@ -805,15 +825,27 @@ function updatetime_withserver()
 	return dawajczas
 end
 function t3x_acja()
-	local data = json.encode({url = responded[promka_sel2].content.images[1].url})
-	image = true
-	refresh_data("https://api.szprink.xyz/t3x/convert", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json"}, "POST")
-	local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.t3x"))
-	kuponimage = love.graphics.newImage(imageData)
+	if state == "main_strona" then
+		local data = json.encode({url = topki[promka_sel2 + 2].content.images[1].url})
+		image = true
+		refresh_data("https://api.szprink.xyz/t3x/convert", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json"}, "POST")
+		local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.t3x"))
+		kuponimage = love.graphics.newImage(imageData)
+	else
+		local data = json.encode({url = responded[promka_sel2].content.images[1].url})
+		image = true
+		refresh_data("https://api.szprink.xyz/t3x/convert", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json"}, "POST")
+		local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.t3x"))
+		kuponimage = love.graphics.newImage(imageData)
+	end
 end
 function png_acja()
 	image = true
-	refresh_data(responded[promka_sel2].content.images[1].url, data, {}, "GET")
+	if state == "main_strona" then
+		refresh_data(topki[promka_sel2 + 2].content.images[1].url, data, {}, "GET")
+	else
+		refresh_data(responded[promka_sel2].content.images[1].url, data, {}, "GET")
+	end
 	local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.png"))
 	kuponimage = love.graphics.newImage(imageData)
 end
