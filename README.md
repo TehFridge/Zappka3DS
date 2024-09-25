@@ -1,13 +1,5 @@
 # Żappka3DS
 
-# DISCLAIMER 
-FROM WHAT I TESTED THE CODES ONLY GET DRAWN CORRECTLY IF THE CONSOLE'S TIMEZONE IS UTC +0000 (go in the rosalina menu > misc. settings > update time > set to utc +0000)
-
-(05.09.24) - https://fxtwitter.com/R3fridg3rator/status/1831769412866851210 (WE GOT IT FIXED)
-
-(02.09.24) - https://fxtwitter.com/R3fridg3rator/status/1830528513465561583
-
-PLZ INSTALL THE LATEST HB-MENU SINCE IT HAS SSL PATCHES BUNDLED IN OR ELSE IT WONT WORK!!!
 
 # WE'RE BACK!
 PL:
@@ -18,7 +10,8 @@ Thanks to the efforts of [Dominik/Domints](https://github.com/domints) (THX DUDE
 
 Get your Żappsy™ straight with Żappka3DS
 
-![image](https://github.com/user-attachments/assets/929883cf-df87-43e1-a34d-33d94d3d4cda)
+![image](https://github.com/user-attachments/assets/9f5dfd38-43b5-49cf-acb9-32eba8299adb)
+
 
 
 # Usage
@@ -46,7 +39,6 @@ Ta aplikacja jest projektem open source napisaną w języku Lua, która korzysta
 ## Legal Notice (English)
 This application is an open-source project written in Lua that utilizes the API of the Żappka app, owned by Żabka Group S.A. The application was created solely for educational purposes and is not affiliated with Żabka Group S.A. The creator of the application is not in any way connected to Żabka Group S.A. and does not derive any financial benefits from this project. All trademarks, trade names, and logos are the property of their respective owners. Users use the application at their own risk.
 
-BGM by John "Joy" Tay - i love polygons
 
 
 
