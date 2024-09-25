@@ -118,6 +118,7 @@ function love.load()
     if loggedin == false then -- Check whether the save file with the barcode exists or nah
         codeforinput = "101010101010"
 		jsonread = false
+		authtoken = "kurwa"
 		updatezappsy()
 		if code == "0" then
 			state = "wypierdalac_updateowac"
@@ -924,6 +925,8 @@ function png_acja()
 	kuponimage = love.graphics.newImage(imageData)
 end
 function updatezappsy()
+	refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=kat_top&sort=priority%2Cdesc",  data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
+	topki = responded
 	local data = ""
 	refresh_data("https://zabka-snrs.zabka.pl/schema-service/v2/documents/points/generate", data, {["Cache-Control"] = "no-cache", ["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
 end
