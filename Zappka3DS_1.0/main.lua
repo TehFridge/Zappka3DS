@@ -15,6 +15,7 @@ local scrolltimerX = -100
 local option_sel = 1
 local promka_sel = 1
 local qrcal = "true"
+local wavelogo = "true"
 local imageload = "true"
 local promka_sel2 = 1
 local SCREEN_WIDTH = 400 
@@ -94,7 +95,7 @@ end
 function love.load()
     -- Get the current time
 	redeemedstatus = "default"
-	APP_VER = "v1.2_beta_v4"
+	APP_VER = "v1.2_final"
 	if opcjeexist then
 		local loadedTable = loadTableFromFile("opcje.lua")
 		if loadedTable then
@@ -104,7 +105,7 @@ function love.load()
 			print("Failed to load the table.")
 		end
 	else 
-		optiontable = {imageload, qrcal}
+		optiontable = {imageload, qrcal, wavelogo}
 		saveTableToFile(optiontable, "opcje.lua")
 	end
 	generated_once = false
@@ -131,9 +132,9 @@ function love.load()
 		jsonread = false
 		updatezappsy() --taki test by zobaczyć czy masz neta
 		if not string.find(body, "uuid") then
-			optiontable[3] = "true"
+			intranet = "true"
 		else
-			optiontable[3] = "false"
+			intranet = "false"
 			jsonread = true
 			updatezappsy()
 			zappsy = responded.content.points
@@ -161,11 +162,11 @@ function love.load()
 	-- Initialize the offsets to 0
 	    -- Create buttons with images
     table.insert(buttons, createButton(195, 195, "assets/qrbutton.png", barcodenmachen, "main_strona", "barcode"))
-	if optiontable[3] == "false" then
+	if intranet == "false" then
 		table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
 	end
-	table.insert(buttons, createButton(5, 5, "assets/exit.png", exitenmachen, "promki", "bierzlubnie"))
-	table.insert(buttons, createButton(5, 5, "assets/settings.png", optenmachen, "main_strona", "options"))
+	table.insert(buttons, createButton(275, 5, "assets/exit.png", exitenmachen, "promki", "bierzlubnie"))
+	table.insert(buttons, createButton(5, 10, "assets/settings.png", optenmachen, "main_strona", "options"))
 	table.insert(buttons, createButton(100, 100, "assets/wyloguj.png", logout, "dupa", "options"))
 	music:setLooping(true)
     music:play()
@@ -262,7 +263,7 @@ function calculatetotp() --NAPRAWIŁEM KURWA
 	local secret = (secretHex:gsub('..', function(hex)
         return string.char(tonumber(hex, 16))
     end))
-	if optiontable[3] == "true" then
+	if intranet == "true" then
 		if optiontable[2] == "false" then
 			czas = os.time()
 			print("intranet: " .. czas)
@@ -369,13 +370,18 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered('Cześć, ' .. name, SCREEN_WIDTH/2, 45, {0.27,0.84,0.43, 1}, font, 4.5)
 		love.graphics.print(APP_VER, font, 5, 205, 0, 2, 2)
 		love.graphics.setColor(1,1,1,1)
-		for i = 0, numSegments - 1 do
-			local yOffset = (lookup[i + 1] or 0) / 2  -- Ensure lookup is not nil
-			
-			-- Draw the precomputed quad with offset
+		if optiontable[3] == "true" then
+			for i = 0, numSegments - 1 do
+				local yOffset = (lookup[i + 1] or 0) / 2  -- Ensure lookup is not nil
+				
+				-- Draw the precomputed quad with offset
+				love.graphics.setColor(1, 1, 1, 1)
+				love.graphics.draw(bottomdark, quads[i + 1], i * sliceWidth, yPos + yOffset)
+			end		
+		else
 			love.graphics.setColor(1, 1, 1, 1)
-			love.graphics.draw(bottomdark, quads[i + 1], i * sliceWidth, yPos + yOffset)
-		end		
+			love.graphics.draw(bottomdark, 0,0)
+		end
 		if showredeemedtime < 10 then
 			if redeemedstatus == "success" then
 				love.graphics.draw(success, 0, 0)
@@ -495,7 +501,12 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered("Opcje", SCREEN_WIDTH/2, 30, {0.27,0.84,0.43, 1}, font, 3.2)
 		TextDraw.DrawTextCentered("Wczytywanie Obrazków: " .. optiontable[1], SCREEN_WIDTH/2, 60, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered("Alt. Kalibracja Kodów QR: " .. optiontable[2], SCREEN_WIDTH/2, 85, {0.27,0.84,0.43, 1}, font, 1.9)
-		--TextDraw.DrawTextCentered("Wymuś tryb Offline: " .. optiontable[3], SCREEN_WIDTH/2, 110, {0.27,0.84,0.43, 1}, font, 1.9)
+		love.graphics.print('Credits:', font, 0, 165, 0, 1.2, 1.2)
+		love.graphics.print('Żappka3DS Theme - Ludwik Franke', font, 0, 180, 0, 1.2, 1.2)
+		love.graphics.print('(https://soundcloud.com/ludwikfranke_crazy)', font, 0, 195, 0, 1.2, 1.2)
+		love.graphics.print('Oprawa graficzna - layt_ (https://github.com/Laytdesu)', font, 0, 210, 0, 1.2, 1.2)
+		love.graphics.print('Ikonki - Font Awesome (https://fontawesome.com/)', font, 0, 225, 0, 1.2, 1.2)
+		TextDraw.DrawTextCentered("Falujące logo: " .. optiontable[3], SCREEN_WIDTH/2, 110, {0.27,0.84,0.43, 1}, font, 1.9)
     end
 end
 local function extract_p_tags(html)
@@ -556,17 +567,18 @@ function draw_bottom_screen()
 		-- end
     -- end
 	if loggedin == true then
-		if optiontable[3] == "false" then
-			TextDraw.DrawTextCentered('Ilość Żappsów: ' .. zappsy, 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.5)
+		if intranet == "false" then
+			TextDraw.DrawTextCentered('Ilość Żappsów: ' .. zappsy, 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.1)
 		else
-			TextDraw.DrawTextCentered('Chwilowy Brak Żappsów', 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.5)
+			TextDraw.DrawTextCentered('Chwilowy Brak Żappsów', 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.1)
 			love.graphics.print('! Brak Dostępu do Internetu !', font, 0, 195, 0, 1.2, 1.2)
 			love.graphics.print('Kody QR mogą się źle generować', font, 0, 210, 0, 1.2, 1.2)
 			love.graphics.print('(nwm czas w 3dsach jakiś zjebany jest)', font, 0, 225, 0, 1.2, 1.2)
 		end
 		if state == "main_strona" then
 			limit = 5
-			if optiontable[3] == "false" then
+			if intranet == "false" then
+				TextDraw.DrawText("Góra/Dół - Wybierz         A - Zatwierdź" , 20, 35, {0,0,0,1}, font, 1.5)
 				love.graphics.print("->", font, 0, (promka_sel2 * 20 ) + 50, 0, 2)
 				TextDraw.DrawText("Nasze Sztosy", 20, 55, {0.27,0.84,0.43, 1}, font, 1.9)
 				TextDraw.DrawText(topki[3].content.name, 20, 75, {0.27,0.84,0.43, 1}, font, 1.5)
@@ -575,17 +587,16 @@ function draw_bottom_screen()
 				TextDraw.DrawText(topki[6].content.name, 20, 135, {0.27,0.84,0.43, 1}, font, 1.5)
 				TextDraw.DrawText(topki[7].content.name, 20, 155, {0.27,0.84,0.43, 1}, font, 1.5)
 			end
-		elseif state == "promki_sel" or state == "promki" then
-			-- love.graphics.print("A - Obczaj Promocje", font, 20, 10, 0, 1.2)
-			-- love.graphics.print("DPad Góra - w góre lol", font, 20, 25, 0, 1.2)
-			-- love.graphics.print("DPad Dół - w dół lol", font, 20, 40, 0, 1.2)
-			-- love.graphics.setColor(1, 1, 1, 1)
+		elseif state == "promki_sel" or state == "promki" or state == "options" then
+			TextDraw.DrawText("Góra/Dół - Wybierz         A - Zatwierdź" , 20, 35, {0,0,0,1}, font, 1.5)
+		elseif state == "barcode" then
+			TextDraw.DrawText("Y - Odśwież/Wygeneruj kod QR ponownie" , 26, 35, {0,0,0,1}, font, 1.3)
 		elseif state == "bierzlubnie" then
 			-- Draw barcode screen elements with no fade effect
 			love.graphics.setColor(1, 1, 1, 1)
 			love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 			love.graphics.setColor(0.27,0.84,0.43,1)
-			TextDraw.DrawTextCentered(textname, 325/2, 35, {0.27,0.84,0.43, 1}, font, 2.7)
+			TextDraw.DrawTextCentered(textname, 325/2, 35, {0.27,0.84,0.43, 1}, font, 2.1)
 			love.graphics.printf(opis, 10, 50, 250, "center", 0, 1.2, 1.2)
 			TextDraw.DrawTextCentered("Kup za " .. punktykurwa .. " Żappsów", 320/2, 175, {0.27,0.84,0.43, 1}, font, 1.8)
 			if niedlapsakurwa == false then
@@ -690,52 +701,54 @@ function love.gamepadpressed(joystick, button)
 			image = false
 			updatepromki(promki_table[promka_sel])
 		elseif state == "promki" or state == "SSF" or state == "main_strona" then
-			if state == "main_strona" then
-				if topki[promka_sel2 + 2].content.possibleRedeems <= 0 then
-					niedlapsakurwa = false
-					print("nie aktywowany")
-					print(topki[promka_sel2 + 2].content.name)
-				else
-					niedlapsakurwa = true
-					print("aktywowany")
-					print(topki[promka_sel2 + 2].content.name)
-				end
-				if optiontable[1] == "true" then
-					if love._potion_version == nil then
-						png_acja()
+			if intranet == "false" then
+				if state == "main_strona" then
+					if topki[promka_sel2 + 2].content.possibleRedeems <= 0 then
+						niedlapsakurwa = false
+						print("nie aktywowany")
+						print(topki[promka_sel2 + 2].content.name)
 					else
-						t3x_acja()
+						niedlapsakurwa = true
+						print("aktywowany")
+						print(topki[promka_sel2 + 2].content.name)
 					end
-				end
-				textname = topki[promka_sel2 + 2].content.name
-				opis = limitchar(topki[promka_sel2 + 2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
-				punktykurwa = topki[promka_sel2 + 2].content.requireRedeemedPoints
-				numredeem = topki[promka_sel2 + 2].content.activationCounter
-				uuid = topki[promka_sel2 + 2].uuid
-			else
-				if responded[promka_sel2].content.possibleRedeems <= 0 then
-					niedlapsakurwa = false
-					print("nie aktywowany")
-					print(responded[promka_sel2].content.name)
+					if optiontable[1] == "true" then
+						if love._potion_version == nil then
+							png_acja()
+						else
+							t3x_acja()
+						end
+					end
+					textname = topki[promka_sel2 + 2].content.name
+					opis = limitchar(topki[promka_sel2 + 2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
+					punktykurwa = topki[promka_sel2 + 2].content.requireRedeemedPoints
+					numredeem = topki[promka_sel2 + 2].content.activationCounter
+					uuid = topki[promka_sel2 + 2].uuid
 				else
-					niedlapsakurwa = true
-					print("aktywowany")
-					print(responded[promka_sel2].content.name)
-				end
-				if optiontable[1] == "true" then
-					if love._potion_version == nil then
-						png_acja()
+					if responded[promka_sel2].content.possibleRedeems <= 0 then
+						niedlapsakurwa = false
+						print("nie aktywowany")
+						print(responded[promka_sel2].content.name)
 					else
-						t3x_acja()
+						niedlapsakurwa = true
+						print("aktywowany")
+						print(responded[promka_sel2].content.name)
 					end
+					if optiontable[1] == "true" then
+						if love._potion_version == nil then
+							png_acja()
+						else
+							t3x_acja()
+						end
+					end
+					textname = responded[promka_sel2].content.name
+					opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
+					punktykurwa = responded[promka_sel2].content.requireRedeemedPoints
+					numredeem = responded[promka_sel2].content.activationCounter
+					uuid = responded[promka_sel2].uuid
 				end
-				textname = responded[promka_sel2].content.name
-				opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
-				punktykurwa = responded[promka_sel2].content.requireRedeemedPoints
-				numredeem = responded[promka_sel2].content.activationCounter
-				uuid = responded[promka_sel2].uuid
+				state = "bierzlubnie"
 			end
-			state = "bierzlubnie"
 		elseif state == "options" then
 			if optiontable[option_sel] == "true" then
 				optiontable[option_sel] = "false"
@@ -752,7 +765,7 @@ function love.gamepadpressed(joystick, button)
 			calculatetotp()
 		end
 	end
-	if optiontable[3] == "false" then
+	if intranet == "false" then
 		if button == "rightshoulder" then
 			if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
 				sfx2:play()
@@ -783,7 +796,7 @@ function love.gamepadpressed(joystick, button)
 	end
 	if state == "options" then
 		if button == "dpdown" then
-			if option_sel < 2 then
+			if option_sel < 3 then
 				option_sel = option_sel + 1
 			end
 		end
@@ -1038,7 +1051,9 @@ function love.update(dt)
         showredeemedtime = showredeemedtime + (timerIncrement * dt)
     end
 	if state == "main_strona" then
-		shiftRight(lookup)
+		if optiontable[3] == "true" then
+			shiftRight(lookup)
+		end
 	end
     elapsedTime = elapsedTime + dt
 	local time = love.timer.getTime()  -- Get current time in seconds
