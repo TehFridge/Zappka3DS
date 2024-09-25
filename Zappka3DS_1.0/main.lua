@@ -929,7 +929,7 @@ function tel_login()
 	if love._potion_version == nil then
 		if gui_design_mode == false then
 			handle_authflow()
-			numertel = "numer_telefonu"
+			numertel = "numer"
 			sendvercode(numertel)
 			test()
 		end
