@@ -14,7 +14,7 @@ local reference = 0
 local scrolltimerX = -100
 local option_sel = 1
 local promka_sel = 1
-local qrcal = "false"
+local qrcal = "true"
 local imageload = "true"
 local promka_sel2 = 1
 local SCREEN_WIDTH = 400 
@@ -38,6 +38,8 @@ local isFading = false
 local currentY = startY
 local banner = love.graphics.newImage("assets/banner.png")
 local bottomdark = love.graphics.newImage("assets/logo.png")
+local failed = love.graphics.newImage("assets/failed.png")
+local success = love.graphics.newImage("assets/success.png")
 local elapsedTimeFade = 0
 local fadeDuration = 0.2
 local stateChanged = false
@@ -53,27 +55,58 @@ local buttons = {}
 
 name = "blank"
 codeforinput = "blank"
+opcjeexist = love.filesystem.exists("opcje.lua")
 loggedin = love.filesystem.exists("secret.hex.txt")
 existsname = love.filesystem.exists("imie.txt")
 love.graphics.setDefaultFilter("nearest")
 gui_design_mode = false
 
 if love._potion_version == nil then
-	font = love.graphics.newFont("bold.ttf", 12) -- Font lol
+	font = love.graphics.newFont("bold.ttf", 12, "normal", 4) -- Font lol
 	local nest = require("nest").init({ console = "3ds", scale = 1 })
 	love._nest = true
     love._console_name = "3DS"
 else
-	font = love.graphics.newFont("bold.ttf", 13) -- Font lol
+	font = love.graphics.newFont("bold.ttf", 13, "normal", 3.5) -- Font lol
 end
+local timerIncrement = 1
+local showredeemedtime = 11
+-- Precompute slice width and vertical position only once
+local imgWidth = bottomdark:getWidth()
+local imgHeight = bottomdark:getHeight()
+local sliceWidth = imgWidth / numSegments
+local yPos = love.graphics.getHeight() / 2 - imgHeight / 2
 
-
-
-
+-- Precompute quads if the number of segments is fixed
+local quads = {}
+for i = 0, numSegments - 1 do
+    local x = i * sliceWidth
+    quads[i + 1] = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
+end
+function loadTableFromFile(filename)
+    local chunk = love.filesystem.load(filename)
+    if chunk then
+        return chunk() -- Execute the chunk, returning the table
+    else
+        return nil
+    end
+end
 function love.load()
     -- Get the current time
-	APP_VER = "v1.2_beta_v2"
-	optiontable = {imageload, qrcal, intranet}
+	redeemedstatus = "default"
+	APP_VER = "v1.2_beta_v4"
+	if opcjeexist then
+		local loadedTable = loadTableFromFile("opcje.lua")
+		if loadedTable then
+			optiontable = loadedTable
+			print("Table loaded successfully!")
+		else
+			print("Failed to load the table.")
+		end
+	else 
+		optiontable = {imageload, qrcal}
+		saveTableToFile(optiontable, "opcje.lua")
+	end
 	generated_once = false
 	if existsname == false then -- Check whether the save file with the name exists or nah
         name = "3DS"
@@ -128,8 +161,12 @@ function love.load()
 	-- Initialize the offsets to 0
 	    -- Create buttons with images
     table.insert(buttons, createButton(195, 195, "assets/qrbutton.png", barcodenmachen, "main_strona", "barcode"))
-	table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
+	if optiontable[3] == "false" then
+		table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
+	end
 	table.insert(buttons, createButton(5, 5, "assets/exit.png", exitenmachen, "promki", "bierzlubnie"))
+	table.insert(buttons, createButton(5, 5, "assets/settings.png", optenmachen, "main_strona", "options"))
+	table.insert(buttons, createButton(100, 100, "assets/wyloguj.png", logout, "dupa", "options"))
 	music:setLooping(true)
     music:play()
 end
@@ -187,6 +224,29 @@ function createButton(x, y, imagePath, callback, statename, secstatename, thrdst
                    touchY > self.y and touchY < self.y + self.height
         end
     }
+end
+function serializeTable(tbl, depth)
+    depth = depth or 0
+    local output = "{\n"
+    
+    for key, value in pairs(tbl) do
+        local formattedKey = type(key) == "string" and string.format("[%q]", key) or "[" .. key .. "]"
+        
+        if type(value) == "table" then
+            output = output .. string.rep(" ", depth + 4) .. formattedKey .. " = " .. serializeTable(value, depth + 4) .. ",\n"
+        else
+            local formattedValue = type(value) == "string" and string.format("%q", value) or tostring(value)
+            output = output .. string.rep(" ", depth + 4) .. formattedKey .. " = " .. formattedValue .. ",\n"
+        end
+    end
+    
+    output = output .. string.rep(" ", depth) .. "}"
+    return output
+end
+
+function saveTableToFile(tbl, filename)
+    local serializedData = "return " .. serializeTable(tbl)
+    love.filesystem.write(filename, serializedData)
 end
 function calculatetotp() --NAPRAWIŁEM KURWA
 	local javaIntMax = 2147483647
@@ -308,24 +368,21 @@ function draw_top_screen(dt)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		TextDraw.DrawTextCentered('Cześć, ' .. name, SCREEN_WIDTH/2, 45, {0.27,0.84,0.43, 1}, font, 4.5)
 		love.graphics.print(APP_VER, font, 5, 205, 0, 2, 2)
-		local imgWidth = bottomdark:getWidth()
-		local imgHeight = bottomdark:getHeight()
-
-		-- Draw the image distorted by a sine wave
+		love.graphics.setColor(1,1,1,1)
 		for i = 0, numSegments - 1 do
-			local sliceWidth = imgWidth / numSegments
-			local x = i * sliceWidth
+			local yOffset = (lookup[i + 1] or 0) / 2  -- Ensure lookup is not nil
 			
-			-- Get the Y offset calculated in the thread
-			local yOffset = lookup[i + 1] / 2 or 0
-			
-			-- Define the quad for this slice of the image
-			local quad = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
-
-			-- Draw each slice of the image with its Y offset
+			-- Draw the precomputed quad with offset
 			love.graphics.setColor(1, 1, 1, 1)
-			love.graphics.draw(bottomdark, quad, x, love.graphics.getHeight() / 2 - imgHeight / 2 + yOffset)
-		end	
+			love.graphics.draw(bottomdark, quads[i + 1], i * sliceWidth, yPos + yOffset)
+		end		
+		if showredeemedtime < 10 then
+			if redeemedstatus == "success" then
+				love.graphics.draw(success, 0, 0)
+			else
+				love.graphics.draw(failed, 0, 0)
+			end
+		end
     elseif state == "barcode" then
         -- Draw barcode screen elements with no fade effect
 		love.graphics.setColor(1, 1, 1, currentFade)
@@ -368,7 +425,7 @@ function draw_top_screen(dt)
 		love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		TextDraw.DrawTextCentered('Zrestartuj Aplikacje', 200, 80, {0.27,0.84,0.43,1}, font, 2.7)
-		TextDraw.DrawTextCentered('(nic się nie zjebało) Wciśnij Start', 200, 140, {0.27,0.84,0.43,1}, font, 3)
+		TextDraw.DrawTextCentered('(nic się nie zjebało) Wciśnij Start', 200, 140, {0.27,0.84,0.43,1}, font, 2)
 	elseif state == "loading" then
 		love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -438,7 +495,7 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered("Opcje", SCREEN_WIDTH/2, 30, {0.27,0.84,0.43, 1}, font, 3.2)
 		TextDraw.DrawTextCentered("Wczytywanie Obrazków: " .. optiontable[1], SCREEN_WIDTH/2, 60, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered("Alt. Kalibracja Kodów QR: " .. optiontable[2], SCREEN_WIDTH/2, 85, {0.27,0.84,0.43, 1}, font, 1.9)
-		TextDraw.DrawTextCentered("Wymuś tryb Offline: " .. optiontable[3], SCREEN_WIDTH/2, 110, {0.27,0.84,0.43, 1}, font, 1.9)
+		--TextDraw.DrawTextCentered("Wymuś tryb Offline: " .. optiontable[3], SCREEN_WIDTH/2, 110, {0.27,0.84,0.43, 1}, font, 1.9)
     end
 end
 local function extract_p_tags(html)
@@ -500,22 +557,24 @@ function draw_bottom_screen()
     -- end
 	if loggedin == true then
 		if optiontable[3] == "false" then
-			TextDraw.DrawTextCentered('Ilość Żappsów: ' .. zappsy, 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.7)
+			TextDraw.DrawTextCentered('Ilość Żappsów: ' .. zappsy, 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.5)
 		else
-			TextDraw.DrawTextCentered('Ilość Żappsów: Chwilowy Brak Żappsów', 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.7)
+			TextDraw.DrawTextCentered('Chwilowy Brak Żappsów', 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.5)
 			love.graphics.print('! Brak Dostępu do Internetu !', font, 0, 195, 0, 1.2, 1.2)
 			love.graphics.print('Kody QR mogą się źle generować', font, 0, 210, 0, 1.2, 1.2)
 			love.graphics.print('(nwm czas w 3dsach jakiś zjebany jest)', font, 0, 225, 0, 1.2, 1.2)
 		end
 		if state == "main_strona" then
 			limit = 5
-			love.graphics.print("->", font, 0, (promka_sel2 * 20 ) + 50, 0, 2)
-			TextDraw.DrawText("Nasze Sztosy", 20, 55, {0.27,0.84,0.43, 1}, font, 1.9)
-			TextDraw.DrawText(topki[3].content.name, 20, 75, {0.27,0.84,0.43, 1}, font, 1.5)
-			TextDraw.DrawText(topki[4].content.name, 20, 95, {0.27,0.84,0.43, 1}, font, 1.5)
-			TextDraw.DrawText(topki[5].content.name, 20, 115, {0.27,0.84,0.43, 1}, font, 1.5)
-			TextDraw.DrawText(topki[6].content.name, 20, 135, {0.27,0.84,0.43, 1}, font, 1.5)
-			TextDraw.DrawText(topki[7].content.name, 20, 155, {0.27,0.84,0.43, 1}, font, 1.5)
+			if optiontable[3] == "false" then
+				love.graphics.print("->", font, 0, (promka_sel2 * 20 ) + 50, 0, 2)
+				TextDraw.DrawText("Nasze Sztosy", 20, 55, {0.27,0.84,0.43, 1}, font, 1.9)
+				TextDraw.DrawText(topki[3].content.name, 20, 75, {0.27,0.84,0.43, 1}, font, 1.5)
+				TextDraw.DrawText(topki[4].content.name, 20, 95, {0.27,0.84,0.43, 1}, font, 1.5)
+				TextDraw.DrawText(topki[5].content.name, 20, 115, {0.27,0.84,0.43, 1}, font, 1.5)
+				TextDraw.DrawText(topki[6].content.name, 20, 135, {0.27,0.84,0.43, 1}, font, 1.5)
+				TextDraw.DrawText(topki[7].content.name, 20, 155, {0.27,0.84,0.43, 1}, font, 1.5)
+			end
 		elseif state == "promki_sel" or state == "promki" then
 			-- love.graphics.print("A - Obczaj Promocje", font, 20, 10, 0, 1.2)
 			-- love.graphics.print("DPad Góra - w góre lol", font, 20, 25, 0, 1.2)
@@ -530,10 +589,11 @@ function draw_bottom_screen()
 			love.graphics.printf(opis, 10, 50, 250, "center", 0, 1.2, 1.2)
 			TextDraw.DrawTextCentered("Kup za " .. punktykurwa .. " Żappsów", 320/2, 175, {0.27,0.84,0.43, 1}, font, 1.8)
 			if niedlapsakurwa == false then
-				TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", 320/2, 205, {0.57,0.24,0.43, 1}, font, 2)
+				TextDraw.DrawTextCentered("Wciśnij Select by Aktywować Kupon", 320/2, 205, {0.57,0.24,0.43, 1}, font, 1.8)
 			else
-				TextDraw.DrawTextCentered("Wciśnij Select by Zwrócić Kupon", 320/2, 205, {0.57,0.24,0.43, 1}, font, 2)
+				TextDraw.DrawTextCentered("Wciśnij Select by Zwrócić Kupon", 320/2, 205, {0.57,0.24,0.43, 1}, font, 1.8)
 			end
+			TextDraw.DrawTextCentered("Liczba odebranych kuponów: " .. numredeem, 320/2, 225, {0.27,0.84,0.43, 1}, font, 1.8)
 			love.graphics.setColor(1, 1, 1, 1)
 		end
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -545,13 +605,25 @@ function draw_bottom_screen()
 	local memoryUsage = collectgarbage("count")
     --love.graphics.print(string.format("Memory Usage: %.2f KB", memoryUsage), font, 150, 215, 0, 1.2, 1.2)
 end
+function logout()
+	love.filesystem.remove("secret.hex.txt")
+	love.filesystem.remove("token.txt")
+	love.filesystem.remove("id.txt")
+	state = "restartplz"
+end
 function exitenmachen()
-	if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
+	if state == "promki" or state == "bierzlubnie" then
 		sfx2:play()
 		jsonread = true
 		image = false
-		updatezappsy()
-		zappsy = responded.content.points
+		state = "main_strona"
+	end
+end
+function kuponmachen()
+	if state == "promki_sel" then
+		sfx2:play()
+		jsonread = true
+		image = false
 		state = "main_strona"
 		--isFading = false
 	elseif state == "main_strona" then
@@ -566,25 +638,17 @@ function exitenmachen()
 		elapsedTimeFade = 0
 	end
 end
-function kuponmachen()
-	if state == "promki_sel" then
-		sfx2:play()
-		jsonread = true
-		image = false
-		updatezappsy()
-		zappsy = responded.content.points
-		state = "main_strona"
-		--isFading = false
-	elseif state == "main_strona" then
-		sfx:play()
-		--updatepromki()
-		state = "promki_sel" 
-		--isScrolling = true
-		--isFading = true
-		isScrolling = true
-		isFading = true
-		elapsedTime = 0  -- Reset elapsed time for scrolling animation
-		elapsedTimeFade = 0
+function optenmachen()
+	if state == "main_strona" or state == "options" then
+		if state == "options" then
+			sfx2:play()
+			saveTableToFile(optiontable, "opcje.lua")
+			state = "main_strona"
+			isFading = false
+		elseif state == "main_strona" then
+			sfx:play()
+			state = "options"
+		end
 	end
 end
 function barcodenmachen()
@@ -617,18 +681,6 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
     end
 end
 function love.gamepadpressed(joystick, button)
-	if state == "main_strona" or state == "options" then
-		if button == "back" then
-			if state == "options" then
-				sfx2:play()
-				state = "main_strona"
-				isFading = false
-			elseif state == "main_strona" then
-				sfx:play()
-				state = "options"
-			end
-		end
-	end
     if button == "a" then
 		if state == "login" then
 			tel_login()
@@ -658,6 +710,7 @@ function love.gamepadpressed(joystick, button)
 				textname = topki[promka_sel2 + 2].content.name
 				opis = limitchar(topki[promka_sel2 + 2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
 				punktykurwa = topki[promka_sel2 + 2].content.requireRedeemedPoints
+				numredeem = topki[promka_sel2 + 2].content.activationCounter
 				uuid = topki[promka_sel2 + 2].uuid
 			else
 				if responded[promka_sel2].content.possibleRedeems <= 0 then
@@ -679,6 +732,7 @@ function love.gamepadpressed(joystick, button)
 				textname = responded[promka_sel2].content.name
 				opis = limitchar(responded[promka_sel2].content.description) .. "\n \n Cały Opis jest Dostępny w Aplikacji Żappka :)"
 				punktykurwa = responded[promka_sel2].content.requireRedeemedPoints
+				numredeem = responded[promka_sel2].content.activationCounter
 				uuid = responded[promka_sel2].uuid
 			end
 			state = "bierzlubnie"
@@ -698,17 +752,12 @@ function love.gamepadpressed(joystick, button)
 			calculatetotp()
 		end
 	end
-	if button == "x" then
-        changename()
-    end
 	if optiontable[3] == "false" then
 		if button == "rightshoulder" then
 			if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
 				sfx2:play()
 				jsonread = true
 				image = false
-				updatezappsy()
-				zappsy = responded.content.points
 				state = "main_strona"
 				--isFading = false
 			elseif state == "main_strona" then
@@ -734,7 +783,7 @@ function love.gamepadpressed(joystick, button)
 	end
 	if state == "options" then
 		if button == "dpdown" then
-			if option_sel < 3 then
+			if option_sel < 2 then
 				option_sel = option_sel + 1
 			end
 		end
@@ -787,24 +836,36 @@ function dawajmito(uuid_value, spowrotem)
 		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/batch-activate", "[" .. data .. "]", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "POST")
 		if code == 200 then
 			print("success act")
+			redeemedstatus = "success"
+		elseif code == 412 then
+			print("failed act")
+			redeemedstatus = "failed"
 		end
 		image = false
 		jsonread = true
 		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/get-item-for-client/uuid/" .. uuid_value, "", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
 		updatezappsy()
 		zappsy = responded.content.points
+		timerIncrement = 1
+		showredeemedtime = 0
 	else
 		jsonread = false
         local data = json.encode({key = "uuid", value = uuid_value})
 		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/batch-deactivate", "[" .. data .. "]", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "POST")	
 		if code == 200 then
 			print("success deact")
+			redeemedstatus = "success"
+		elseif code == 412 then
+			print("failed deact")
+			redeemedstatus = "failed"
 		end
 		image = false
 		jsonread = true
 		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/get-item-for-client/uuid/" .. uuid_value, "", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
 		updatezappsy()
 		zappsy = responded.content.points
+		timerIncrement = 1
+		showredeemedtime = 0
 	end
 end
 function alt_kalibracja()
@@ -868,7 +929,7 @@ function tel_login()
 	if love._potion_version == nil then
 		if gui_design_mode == false then
 			handle_authflow()
-			numertel = "numer_tel"
+			numertel = "660222062"
 			sendvercode(numertel)
 			test()
 		end
@@ -935,6 +996,9 @@ function sendbackvercode(smscode)  --niby wyslij tylko kod sms, ale przy okazji 
 		love.filesystem.write("secret.hex.txt", responded.secrets.loyal)
 		love.filesystem.write("id.txt", id)
 		love.filesystem.write("token.txt", authtoken)
+		refresh_data("https://zabka-snrs.zabka.pl/v4/my-account/personal-information", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")	
+		name = responded.firstName
+		love.filesystem.write("imie.txt", responded.firstName)
 		updatezappsy()
 		zappsy = responded.content.points
 		calculatetotp()
@@ -970,6 +1034,9 @@ function love.textinput(text)
 	end
 end
 function love.update(dt)
+	if showredeemedtime <= 10 then
+        showredeemedtime = showredeemedtime + (timerIncrement * dt)
+    end
 	if state == "main_strona" then
 		shiftRight(lookup)
 	end
