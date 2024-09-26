@@ -28,6 +28,8 @@ Well get your Żappka Barcode and your 3DS ready to catch some Żappsy™!
 
 
 ## Credits
+PNG -> T3X API for Żappsy redeems made by [Szprink](https://github.com/Szprinktrap/)
+
 Big thanks to [Dominik/Domints'a](https://github.com/domints) for his Żappka TOTP code implementation used in the QR Codes.
 
 
