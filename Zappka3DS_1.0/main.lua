@@ -1,5 +1,5 @@
 require("lib.text-draw")
---require("lib.bar128")
+
 json = require("lib.json")
 local qrcode = require('lib.loveqrcode')
 local https = require("https")
@@ -8,8 +8,8 @@ local ltn12 = require("ltn12")
 local bit = require("bit")    
 local sha1 = require("sha1")
 local struct = require("lib.struct")
---local ffi = require("ffi")
---local Barcode = require("lib.bar128") -- an awesome Code128 library made by Nawias (POLSKA GUROM)
+
+
 local reference = 0
 local scrolltimerX = -100
 local option_sel = 1
@@ -27,13 +27,13 @@ local exists = "dunno"
 local intranet = "false"
 local state = ""
 local elapsedTime = 0
-local scrollDuration = 0.5  -- Total duration (in seconds) for the scrolling animation
-local startY = 400          -- Initial Y position of the text
-local endY = 210            -- Final Y position of the text
-local startFade = 1          -- Initial Y position of the text
-local endFade = 0.5            -- Final Y position of the text
-local startbarY = 300          -- Initial Y position of the text
-local endbarY = 20            -- Final Y position of the text
+local scrollDuration = 0.5  
+local startY = 400          
+local endY = 210            
+local startFade = 1          
+local endFade = 0.5            
+local startbarY = 300          
+local endbarY = 20            
 local isScrolling = false
 local isFading = false
 local currentY = startY
@@ -48,9 +48,9 @@ local music = love.audio.newSource("bgm/bgm.ogg", "stream")
 local sfx = love.audio.newSource("bgm/sfx.ogg", "static")
 local sfx2 = love.audio.newSource("bgm/sfx2.ogg", "static")
 local jsonread = true
-local numSegments = 126 -- Number of vertical slices (higher = smoother wave)
-local offsets = {}      -- Table to store the Y offsets for each slice
--- Communication channels with the thread
+local numSegments = 126 
+local offsets = {}      
+
 local offsetChannel = love.thread.getChannel("offsetChannel")
 local buttons = {}
 local sin = math.sin
@@ -65,22 +65,22 @@ love.graphics.setDefaultFilter("nearest")
 gui_design_mode = false
 
 if love._potion_version == nil then
-	font = love.graphics.newFont("bold.ttf", 12, "normal", 4) -- Font lol
+	font = love.graphics.newFont("bold.ttf", 12, "normal", 4) 
 	local nest = require("nest").init({ console = "3ds", scale = 1 })
 	love._nest = true
     love._console_name = "3DS"
 else
-	font = love.graphics.newFont("bold.ttf", 13, "normal", 3.5) -- Font lol
+	font = love.graphics.newFont("bold.ttf", 13, "normal", 3.5) 
 end
 local timerIncrement = 1
 local showredeemedtime = 11
--- Precompute slice width and vertical position only once
+
 local imgWidth = bottomdark:getWidth()
 local imgHeight = bottomdark:getHeight()
 local sliceWidth = imgWidth / numSegments
 local yPos = love.graphics.getHeight() / 2 - imgHeight / 2
 local yOffsetIndex = 0
--- Precompute quads if the number of segments is fixed
+
 local quads = {}
 local logoSpriteBatch = love.graphics.newSpriteBatch(bottomdark, numSegments)
 for i = 0, numSegments - 1 do
@@ -90,17 +90,17 @@ end
 function loadTableFromFile(filename)
     local chunk = love.filesystem.load(filename)
     if chunk then
-        return chunk() -- Execute the chunk, returning the table
+        return chunk() 
     else
         return nil
     end
 end
 local function getYOffsetIndex(i)
-	return (yOffsetIndex + i) % 126 + 1 -- + 1 bo tablice w lua indexują się od 1
+	return (yOffsetIndex + i) % 126 + 1 
 end
 local function updateYOffsetIndex() yOffsetIndex = (yOffsetIndex + 1) % 126 end
 function love.load()
-    -- Get the current time
+    
 	redeemedstatus = "default"
 	APP_VER = "v1.2_final"
 	if opcjeexist then
@@ -116,13 +116,13 @@ function love.load()
 		saveTableToFile(optiontable, "opcje.lua")
 	end
 	generated_once = false
-	if existsname == false then -- Check whether the save file with the name exists or nah
+	if existsname == false then 
         name = "3DS"
 	else 
 	    name =  love.filesystem.read("imie.txt")
 	end
 	
-    if loggedin == false then -- Check whether the save file with the barcode exists or nah
+    if loggedin == false then 
         codeforinput = "101010101010"
 		jsonread = false
 		authtoken = "kurwa"
@@ -138,7 +138,7 @@ function love.load()
 		id = love.filesystem.read("id.txt")
 		authtoken = love.filesystem.read("token.txt")
 		jsonread = false
-		updatezappsy() --taki test by zobaczyć czy masz neta
+		updatezappsy() 
 		if not string.find(body, "uuid") then
 			intranet = "true"
 		else
@@ -166,9 +166,9 @@ function love.load()
 	    end
 		state = "main_strona"
     end
-    --barcode = Barcode(codeforinput, 60, 3)
-	-- Initialize the offsets to 0
-	    -- Create buttons with images
+    
+	
+	    
     table.insert(buttons, createButton(195, 195, "assets/qrbutton.png", barcodenmachen, "main_strona", "barcode"))
 	table.insert(buttons, createButton(190, 155, "assets/przelejkurwa.png", przelejen, "main_strona", "dupa"))
 	if intranet == "false" then
@@ -196,7 +196,7 @@ local function isoToUnix(isoDate)
     year, month, day = tonumber(year), tonumber(month), tonumber(day)
     hour, min, sec = tonumber(hour), tonumber(min), tonumber(sec)
 
-    -- Days calculation since the Unix epoch (1970-01-01)
+    
     local days = 0
     for y = 1970, year - 1 do
         days = days + (isLeapYear(y) and 366 or 365)
@@ -208,13 +208,13 @@ local function isoToUnix(isoDate)
 
     days = days + (day - 1)
 
-    -- Convert to total seconds
+    
     local totalSeconds = days * 86400 + hour * 3600 + min * 60 + sec
 
     return totalSeconds
 end
 function createButton(x, y, imagePath, callback, statename, secstatename, thrdstate)
-    local image = love.graphics.newImage(imagePath) -- Load the image
+    local image = love.graphics.newImage(imagePath) 
     return {
         x = x,
         y = y,
@@ -223,13 +223,13 @@ function createButton(x, y, imagePath, callback, statename, secstatename, thrdst
         image = image,
         callback = callback,
         draw = function(self)
-            -- Draw the image as the button
+            
 			if state == statename or state == secstatename then
 				love.graphics.draw(self.image, self.x, self.y)
 			end
         end,
         isTouched = function(self, touchX, touchY)
-            -- Check if touch is within button boundaries
+            
             return touchX > self.x and touchX < self.x + self.width and
                    touchY > self.y and touchY < self.y + self.height
         end
@@ -263,7 +263,7 @@ function calculatetotp()
 
 	local function c(arr, index)
 		local result = 0
-		for i = index, index + 3 do  -- Fix the loop to read 4 bytes correctly
+		for i = index, index + 3 do  
 			result = bit.bor(bit.lshift(result, 8), bit.band(arr:byte(i), 0xFF))
 		end
 		return result
@@ -288,16 +288,16 @@ function calculatetotp()
 	local outputBytes = sha1.hmac_binary(secret, msg)
 
 	if outputBytes ~= nil then
-		-- Ensure we have enough bytes to read
+		
 		if #outputBytes >= 4 then
-			-- Use the last byte of the HMAC result to calculate the offset
+			
 			local byteIndex = outputBytes:byte(#outputBytes)
 			local offset = bit.band(byteIndex, 15)
 			print("byteIndex: " .. byteIndex)
 			print("offset: " .. offset)
 
-			-- Extract the integer at the specified offset to generate the TOTP
-			local magicNumber = bit.band(c(outputBytes, offset + 1), javaIntMax) % 1000000  -- Offset adjusted for 1-based index
+			
+			local magicNumber = bit.band(c(outputBytes, offset + 1), javaIntMax) % 1000000  
 			totp = string.format("%06d", magicNumber)
 			print(totp)
 			print("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
@@ -328,32 +328,32 @@ end
 function refresh_data(url, request, inheaders, metoda)
     print(url)
 	print(request)
-	--love.filesystem.write("data.txt", request)
-    -- Headers
-    -- local myheaders = {
-        -- ["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; rv:129.0) Gecko/20100101 Firefox/129.0",
-        -- ["accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/png,image/svg+xml,*/*;q=0.8",
-        -- ["sec-fetch-user"] = "?1",
-		-- ["sec-fetch-site"] = "none",
-        -- ["sec-fetch-mode"] = "navigate",
-        -- ["sec-fetch-dest"] = "document",
-        -- ["accept-encoding"] = "gzip, deflate, br, zstd",
-        -- ["accept-language"] = " pl,en-US;q=0.7,en;q=0.3",
-		-- ["upgrade-insecure-requests"] = "1",
-		-- ["te"] = "trailers",
-		-- ["content-length"] = "0",
-        -- ["priority"] = "u=0, i"
-    -- }
-    -- Response table to collect the response body
-	local request_body = request --the json body
+	
+    
+    
+        
+        
+        
+		
+        
+        
+        
+        
+		
+		
+		
+        
+    
+    
+	local request_body = request 
     response_body = {}
-    -- Making the HTTP request
+    
 	if image == false then
 		code, body, headers = https.request(url, {data = request_body, method = metoda, headers = inheaders})
 	else
 		code, imagebody, headers = https.request(url, {data = request_body, method = metoda, headers = inheaders})
 	end
-	--print(body)
+	
 	print(code)
 	if jsonread == true then
 		responded = json.decode(body)
@@ -365,23 +365,23 @@ end
 
 function draw_top_screen(dt)
     if isScrolling == true then
-        -- Calculate progress of the animation (from 0 to 1)
+        
         progress = math.min(elapsedTime / scrollDuration, 1)
 		fadedprogress = math.min(elapsedTimeFade / fadeDuration, 1)
-		fadedProgres = 1 - (1 - fadedprogress) ^ 2  -- Ease Out function: y = 1 - (1 - x)^2
+		fadedProgres = 1 - (1 - fadedprogress) ^ 2  
 		currentFade = startFade + (endFade - startFade) * fadedProgres
 
-        -- Apply ease-out function to the progress (for smoother scrolling)
-        easedProgress = 1 - (1 - progress) ^ 2  -- Ease Out function: y = 1 - (1 - x)^2
+        
+        easedProgress = 1 - (1 - progress) ^ 2  
 
-        -- Interpolate Y position based on eased progress
+        
         currentY = startY + (endY - startY) * easedProgress
     	barY = startbarY + (endbarY - startbarY) * easedProgress
     end
 
-    -- Draw based on the current state
+    
     if state == "main_strona" then
-        -- Draw main screen elements with fade effect
+        
 		love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		TextDraw.DrawTextCentered('Cześć, ' .. name, SCREEN_WIDTH/2, 45, {0.27,0.84,0.43, 1}, font, 4.5)
@@ -390,11 +390,11 @@ function draw_top_screen(dt)
 		if optiontable[3] == "true" then
 			logoSpriteBatch:clear()
 			for i = 0, numSegments - 1 do
-				local yOffset = (lookup[i + 1] or 0) / 2  -- Ensure lookup is not nil            
-			-- add the precomputed quad with offset to spritebatch
+				local yOffset = (lookup[i + 1] or 0) / 2  
+			
 				logoSpriteBatch:add(quads[i + 1], i*sliceWidth, yPos + yOffset)
 			end    
-				-- draw the spritebatch    
+				
 			love.graphics.draw(logoSpriteBatch)
 		else
 			love.graphics.draw(bottomdark, 0,0)
@@ -407,7 +407,7 @@ function draw_top_screen(dt)
 			end
 		end
     elseif state == "barcode" then
-        -- Draw barcode screen elements with no fade effect
+        
 		love.graphics.setColor(1, 1, 1, currentFade)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(1, 1, 1, 1)
@@ -428,13 +428,13 @@ function draw_top_screen(dt)
 			love.graphics.printf("Wciśnij Y", font, 5, barY + 110, 250, "center", 0, 1.55, 1.55)
 		end
 		love.graphics.setColor(0.27,0.84,0.43,currentFade)
-		--love.graphics.print(totp, font, 20, 10, 0, 1.2)
-		--love.graphics.print(ts, font, 20, 30, 0, 1.2)
-        --love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
-		--TextDraw.DrawTextCentered(id, SCREEN_WIDTH/2, currentY - 25, {0,0,0,1}, font, 1.9)
-		--TextDraw.DrawTextCentered("Zeskanuj swój Kod Kreskowy", SCREEN_WIDTH/2, currentY, {0.27,0.84,0.43,1}, font, 2.3)
+		
+		
+        
+		
+		
 	elseif state == "login" then
-        -- Draw main screen elements with fade effect
+        
 		love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		TextDraw.DrawTextCentered('Zaloguj się Numerem Telefonu', 200, 80, {0.27,0.84,0.43,1}, font, 2.7)
@@ -459,7 +459,7 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered("Najprawdopodobniej nie masz certyfikatów SSL", 200, 80, {0.27,0.84,0.43,1}, font, 1.2)
 		TextDraw.DrawTextCentered("Zupdate'uj Homebrew Launcher/hb-menu", 200, 100, {0.27,0.84,0.43,1}, font, 1.2)
     elseif state == "promki" then
-        -- Draw barcode screen elements with no fade effect
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -474,7 +474,7 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(responded[7].content.name, SCREEN_WIDTH/2, 210, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[8].content.name, SCREEN_WIDTH/2, 235, {0.27,0.84,0.43, 1}, font, 1.9)
 	elseif state == "promki_sel" then
-        -- Draw barcode screen elements with no fade effect
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -488,11 +488,11 @@ function draw_top_screen(dt)
 		if piweczko == true then
 			TextDraw.DrawTextCentered(promki_nametable[6], SCREEN_WIDTH/2 + barY - 20, 185, {0.27,0.84,0.43, 1}, font, 1.9)
 		end
-        --love.graphics.print('Cześć, ' .. name, font, 10, 10, 0, 3, 3)
-		--TextDraw.DrawTextCentered(id, SCREEN_WIDTH/2, currentY - 25, {0,0,0,1}, font, 1.9)
-		--TextDraw.DrawTextCentered("Zeskanuj swój Kod Kreskowy", SCREEN_WIDTH/2, currentY, {0.27,0.84,0.43,1}, font, 2.3)
+        
+		
+		
 	elseif state == "SSF" then
-        -- Draw barcode screen elements with no fade effect
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -503,14 +503,14 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(responded[3].content.name, SCREEN_WIDTH/2 + barY - 20, 110, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[4].content.name, SCREEN_WIDTH/2 + barY - 20, 135, {0.27,0.84,0.43, 1}, font, 1.9)
 	elseif state == "bierzlubnie" then
-        -- Draw barcode screen elements with no fade effect
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		if optiontable[1] == "true" then
 			love.graphics.draw(kuponimage, 60, -20, 0, 0.3, 0.3)
 		end
 	elseif state == "options" then
-        -- Draw barcode screen elements with no fade effect
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -558,31 +558,31 @@ function draw_bottom_screen()
     SCREEN_HEIGHT = 240
     love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-	-- if state ~= "bierzlubnie" then
-		-- local imgWidth = bottomdark:getWidth()
-		-- local imgHeight = bottomdark:getHeight()
+	
+		
+		
 
-		-- -- Draw the image distorted by a sine wave
-		-- for i = 0, numSegments - 1 do
-			-- local sliceWidth = imgWidth / numSegments
-			-- local x = i * sliceWidth
+		
+		
 			
-			-- -- Get the Y offset calculated in the thread
-			-- local yOffset = lookup[i + 1] / 2 or 0
 			
-			-- -- Define the quad for this slice of the image
-			-- local quad = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
+			
+			
+			
+			
+			
+			
 
-			-- -- Draw each slice of the image with its Y offset
-			-- love.graphics.draw(bottomdark, quad, x, love.graphics.getHeight() / 2 - imgHeight / 2 + yOffset)
-		-- end	
-	-- else
-		-- love.graphics.setColor(1, 1, 1, 1)
-		-- love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-		-- if optiontable[1] == "true" then
-			-- love.graphics.draw(kuponimage, 10, -20, 0, 0.3, 0.3)
-		-- end
-    -- end
+			
+			
+		
+	
+		
+		
+		
+			
+		
+    
 	if loggedin == true then
 		if intranet == "false" then
 			TextDraw.DrawTextCentered('Ilość Żappsów: ' .. zappsy, 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.1)
@@ -609,7 +609,7 @@ function draw_bottom_screen()
 		elseif state == "barcode" then
 			TextDraw.DrawText("Y - Odśwież/Wygeneruj kod QR ponownie" , 26, 35, {0,0,0,1}, font, 1.3)
 		elseif state == "bierzlubnie" then
-			-- Draw barcode screen elements with no fade effect
+			
 			love.graphics.setColor(1, 1, 1, 1)
 			love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 			love.graphics.setColor(0.27,0.84,0.43,1)
@@ -631,7 +631,7 @@ function draw_bottom_screen()
 		end
     end
 	local memoryUsage = collectgarbage("count")
-    --love.graphics.print(string.format("Memory Usage: %.2f KB", memoryUsage), font, 150, 215, 0, 1.2, 1.2)
+    
 end
 function logout()
 	love.filesystem.remove("secret.hex.txt")
@@ -653,16 +653,16 @@ function kuponmachen()
 		jsonread = true
 		image = false
 		state = "main_strona"
-		--isFading = false
+		
 	elseif state == "main_strona" then
 		sfx:play()
-		--updatepromki()
+		
 		state = "promki_sel" 
-		--isScrolling = true
-		--isFading = true
+		
+		
 		isScrolling = true
 		isFading = true
-		elapsedTime = 0  -- Reset elapsed time for scrolling animation
+		elapsedTime = 0  
 		elapsedTimeFade = 0
 	end
 end
@@ -689,7 +689,7 @@ function barcodenmachen()
 		state = "barcode"
 		isScrolling = true
 		isFading = true
-		elapsedTime = 0  -- Reset elapsed time for scrolling animation
+		elapsedTime = 0  
 		elapsedTimeFade = 0
 	end
 end
@@ -701,10 +701,10 @@ function shiftRight(t)
     t[1] = last
 end
 function love.touchpressed(id, x, y, dx, dy, pressure)
-    -- Check if any button is pressed
+    
     for _, button in ipairs(buttons) do
         if button:isTouched(x, y) then
-            button.callback() -- Call the button's callback
+            button.callback() 
         end
     end
 end
@@ -789,16 +789,16 @@ function love.gamepadpressed(joystick, button)
 				jsonread = true
 				image = false
 				state = "main_strona"
-				--isFading = false
+				
 			elseif state == "main_strona" then
 				sfx:play()
-				--updatepromki()
+				
 				state = "promki_sel" 
-				--isScrolling = true
-				--isFading = true
+				
+				
 				isScrolling = true
 				isFading = true
-				elapsedTime = 0  -- Reset elapsed time for scrolling animation
+				elapsedTime = 0  
 				elapsedTimeFade = 0
 			end
 		end
@@ -1020,28 +1020,28 @@ end
 function test()
 	local data = json.encode({idToken = boinaczejjebnie})
     refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["Content-Type"] = "application/json", ["X-Android-Package"] = "pl.zabka.apb2c", ["X-Android-Cert"] = "FAB089D9E5B41002F29848FC8034A391EE177077", ["Accept-Language"] = "en-US", ["X-Client-Version"] = "Android/Fallback/X22003001/FirebaseCore-Android", ["X-Firebase-GMPID"] = "1:146100467293:android:0ec9b9022788ad32b7bfb4", ["X-Firebase-Client"] = "H4sIAAAAAAAAAKtWykhNLCpJSk0sKVayio7VUSpLLSrOzM9TslIyUqoFAFyivEQfAAAA", ["Content-Length"] = "894", ["User-Agent"] = "Dalvik/2.1.0 (Linux; U; Android 9; SM-A600FN Build/PPR1.180610.011)", ["Host"] = "www.googleapis.com", ["Connection"] = "Keep-Alive"}, "POST")
-	--love.filesystem.write("tokendata.txt", data)
-	--love.filesystem.write("tokendebug.txt", body)
+	
+	
 end
 function handle_authflow()
 	local data = json.encode({clientType = "CLIENT_TYPE_ANDROID"})
     refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
 	boinaczejjebnie = responded.idToken
-	--love.filesystem.write("tokendata.txt", data)
-	--love.filesystem.write("tokendebug.txt", body)
+	
+	
 end
 function sendvercode(nrtel)
 	local data = json.encode({operationName = "SendVerificationCode", query = "mutation SendVerificationCode($input: SendVerificationCodeInput!) { sendVerificationCode(input: $input) { retryAfterSeconds } }",variables = {input = {phoneNumber = {countryCode = "48", nationalNumber = nrtel}}}})
 	refresh_data("https://super-account.spapp.zabka.pl/", data, {["content-type"] = "application/json", ["authorization"] = responded.idToken}, "POST")
-	--love.filesystem.write("data.txt", data)
-	--love.filesystem.write("debug.txt", body)
+	
+	
 end
-function sendbackvercode(smscode)  --niby wyslij tylko kod sms, ale przy okazji weź mi cały auth flow zrób lmao
+function sendbackvercode(smscode)  
 	if gui_design_mode == false then
 		local data = json.encode({operationName = "SignInWithPhone",variables = {input = {phoneNumber = {countryCode = "48", nationalNumber = numertel},verificationCode = smscode}}, query = "mutation SignInWithPhone($input: SignInInput!) { signIn(input: $input) { customToken } }"})
 		refresh_data("https://super-account.spapp.zabka.pl/", data, {["content-type"] = "application/json", ["authorization"] = "Bearer " .. boinaczejjebnie, ["user-agent"] = "okhttp/4.12.0", ["x-apollo-operation-id"] = "a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de"	,["x-apollo-operation-name"] = "SignInWithPhone", ["accept"] = "multipart/mixed; deferSpec=20220824, application/json", ["content-length"] = "250"}, "POST")
-		--love.filesystem.write("data.txt", data)
-		--love.filesystem.write("debug.txt", body)
+		
+		
 		local tokentemp = responded.data.signIn.customToken
 		local data = json.encode({token = tokentemp, returnSecureToken = "true"})
 		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
@@ -1119,36 +1119,36 @@ function love.update(dt)
 		end
 	end
     elapsedTime = elapsedTime + dt
-	local time = love.timer.getTime()  -- Get current time in seconds
+	local time = love.timer.getTime()  
 	if scrolltimerX <= 550 then
 	   scrolltimerX = scrolltimerX + 0.2
 	else
 	   scrolltimerX = -150
 	end
-	-- if state == "main_strona" then
-		-- licznik = updateYOffsetIndex()
-	-- end
+	
+		
+	
     elapsedTimeFade = elapsedTimeFade + dt
 
-    -- Check if the transition animation (scrolling) has completed
+    
     if elapsedTime >= scrollDuration then
-        isScrolling = false  -- Animation complete
+        isScrolling = false  
     end
 
-    -- Check if the fade animation has completed
+    
     if elapsedTimeFade >= fadeDuration then
-        isFading = false  -- Fade animation complete
+        isFading = false  
     end
 
-    -- If transitioning to or from a state, reset fade animation timer
+    
     if stateChanged then
         elapsedTimeFade = 0
         isFading = true
         stateChanged = false
     end
-    -- Update the timer
+    
     timer = timer - dt
-	    -- Increment the timer by the time elapsed since the last frame
+	    
     love.graphics.origin()  
 	collectgarbage("collect")
 end
