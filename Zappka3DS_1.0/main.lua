@@ -48,11 +48,13 @@ local music = love.audio.newSource("bgm/bgm.ogg", "stream")
 local sfx = love.audio.newSource("bgm/sfx.ogg", "static")
 local sfx2 = love.audio.newSource("bgm/sfx2.ogg", "static")
 local jsonread = true
-local numSegments = 100 -- Number of vertical slices (higher = smoother wave)
+local numSegments = 126 -- Number of vertical slices (higher = smoother wave)
 local offsets = {}      -- Table to store the Y offsets for each slice
 -- Communication channels with the thread
 local offsetChannel = love.thread.getChannel("offsetChannel")
 local buttons = {}
+local sin = math.sin
+local pi = math.pi
 
 name = "blank"
 codeforinput = "blank"
@@ -77,9 +79,10 @@ local imgWidth = bottomdark:getWidth()
 local imgHeight = bottomdark:getHeight()
 local sliceWidth = imgWidth / numSegments
 local yPos = love.graphics.getHeight() / 2 - imgHeight / 2
-
+local yOffsetIndex = 0
 -- Precompute quads if the number of segments is fixed
 local quads = {}
+local logoSpriteBatch = love.graphics.newSpriteBatch(bottomdark, numSegments)
 for i = 0, numSegments - 1 do
     local x = i * sliceWidth
     quads[i + 1] = love.graphics.newQuad(x, 0, sliceWidth, imgHeight, imgWidth, imgHeight)
@@ -92,6 +95,10 @@ function loadTableFromFile(filename)
         return nil
     end
 end
+local function getYOffsetIndex(i)
+	return (yOffsetIndex + i) % 126 + 1 -- + 1 bo tablice w lua indexują się od 1
+end
+local function updateYOffsetIndex() yOffsetIndex = (yOffsetIndex + 1) % 126 end
 function love.load()
     -- Get the current time
 	redeemedstatus = "default"
@@ -163,6 +170,7 @@ function love.load()
 	-- Initialize the offsets to 0
 	    -- Create buttons with images
     table.insert(buttons, createButton(195, 195, "assets/qrbutton.png", barcodenmachen, "main_strona", "barcode"))
+	table.insert(buttons, createButton(190, 155, "assets/przelejkurwa.png", przelejen, "main_strona", "dupa"))
 	if intranet == "false" then
 		table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
 	end
@@ -250,50 +258,58 @@ function saveTableToFile(tbl, filename)
     local serializedData = "return " .. serializeTable(tbl)
     love.filesystem.write(filename, serializedData)
 end
-function calculatetotp() --NAPRAWIŁEM KURWA
+function calculatetotp()
 	local javaIntMax = 2147483647
 
 	local function c(arr, index)
 		local result = 0
-		for i = index, index + 4 do
+		for i = index, index + 3 do  -- Fix the loop to read 4 bytes correctly
 			result = bit.bor(bit.lshift(result, 8), bit.band(arr:byte(i), 0xFF))
 		end
 		return result
 	end
+
 	local secretHex = codeforinput
 	local secret = (secretHex:gsub('..', function(hex)
-        return string.char(tonumber(hex, 16))
-    end))
+		return string.char(tonumber(hex, 16))
+	end))
+
 	if intranet == "true" then
-		if optiontable[2] == "false" then
-			czas = os.time()
-			print("intranet: " .. czas)
-		else
-			czas = alt_kalibracja()
-		end
+		czas = alt_kalibracja()
 	else
 		czas = updatetime_withserver()
 		print("internet: " .. czas)
 	end
-	if love._console == "3ds" then
-		ts = math.floor(czas / 30)
-	else 
-		ts = math.floor(czas / 30)
-	end
-	print(ts)
-    local msg = struct.pack(">L8", ts)
 
-    local outputBytes = sha1.hmac_binary(secret, msg)
-	print(outputBytes)
+	ts = math.floor(czas / 30)
+	print(ts)
+
+	local msg = struct.pack(">L8", ts)
+	local outputBytes = sha1.hmac_binary(secret, msg)
+
 	if outputBytes ~= nil then
-		local magicNumber = bit.band(c(outputBytes, bit.band(outputBytes:byte(#outputBytes), 15)), 2147483647) % 1000000		
-		totp = string.format("%06d", magicNumber)
-		print(totp)
-		print("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
-		qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
-		generated_once = true
+		-- Ensure we have enough bytes to read
+		if #outputBytes >= 4 then
+			-- Use the last byte of the HMAC result to calculate the offset
+			local byteIndex = outputBytes:byte(#outputBytes)
+			local offset = bit.band(byteIndex, 15)
+			print("byteIndex: " .. byteIndex)
+			print("offset: " .. offset)
+
+			-- Extract the integer at the specified offset to generate the TOTP
+			local magicNumber = bit.band(c(outputBytes, offset + 1), javaIntMax) % 1000000  -- Offset adjusted for 1-based index
+			totp = string.format("%06d", magicNumber)
+			print(totp)
+			print("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
+			qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
+			generated_once = true
+		else
+			print("outputBytes too short: " .. #outputBytes)
+			generated_once = false
+		end
 	else
-		generated_once = true
+		print("Failed to generate HMAC")
+		generated_once = false
 		qr1 = nil
 	end
 end
@@ -337,7 +353,7 @@ function refresh_data(url, request, inheaders, metoda)
 	else
 		code, imagebody, headers = https.request(url, {data = request_body, method = metoda, headers = inheaders})
 	end
-	print(body)
+	--print(body)
 	print(code)
 	if jsonread == true then
 		responded = json.decode(body)
@@ -372,15 +388,15 @@ function draw_top_screen(dt)
 		love.graphics.print(APP_VER, font, 5, 205, 0, 2, 2)
 		love.graphics.setColor(1,1,1,1)
 		if optiontable[3] == "true" then
+			logoSpriteBatch:clear()
 			for i = 0, numSegments - 1 do
-				local yOffset = (lookup[i + 1] or 0) / 2  -- Ensure lookup is not nil
-				
-				-- Draw the precomputed quad with offset
-				love.graphics.setColor(1, 1, 1, 1)
-				love.graphics.draw(bottomdark, quads[i + 1], i * sliceWidth, yPos + yOffset)
-			end		
+				local yOffset = (lookup[i + 1] or 0) / 2  -- Ensure lookup is not nil            
+			-- add the precomputed quad with offset to spritebatch
+				logoSpriteBatch:add(quads[i + 1], i*sliceWidth, yPos + yOffset)
+			end    
+				-- draw the spritebatch    
+			love.graphics.draw(logoSpriteBatch)
 		else
-			love.graphics.setColor(1, 1, 1, 1)
 			love.graphics.draw(bottomdark, 0,0)
 		end
 		if showredeemedtime < 10 then
@@ -941,11 +957,16 @@ function updatepromki(endlol)
 	refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=" .. endlol .. "&sort=status%2Casc&sort=priority%2Cdesc", data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
 	limit = #responded
 end
+function przelejen()
+	changes = "przelej"
+	love.keyboard.setTextInput(true, {type = "numpad", hint = "Numer Odbiorcy"})
+	love.keyboard.setTextInput(false)
+end
 function tel_login()
 	if love._potion_version == nil then
 		if gui_design_mode == false then
 			handle_authflow()
-			numertel = "numer"
+			numertel = "numertel"
 			sendvercode(numertel)
 			test()
 		end
@@ -968,6 +989,33 @@ function smskod()
 		loadingtext = "Logowanie..."
 		state = "loading"
 	end
+end
+function transfer2()
+	changes = "pointsender"
+	love.keyboard.setTextInput(true, {type = "numpad", hint = "Ilosc zappsow."})
+	love.keyboard.setTextInput(false)
+end
+function transfer3()
+	changes = "opissender"
+	love.keyboard.setTextInput(true, {hint = "Opis przelewu."})
+	love.keyboard.setTextInput(false)
+end
+function transfer4()
+	changes = "recipe"
+	love.keyboard.setTextInput(true, {hint = "Komu wysylasz."})
+	love.keyboard.setTextInput(false)
+end
+function sendlol()
+	senderime = name .. " (Żappka3DS User)"
+	local data = json.encode({sender_name = senderime, recipient_name = recipename, points_number = tonumber(senderpoints), message = senderopis})
+	refresh_data("https://api.zappka.app/transfer-points/users/" .. clientID, data, {["app-device"] = "samsung SM-A600FN", ["app-version"] = "3.21.60", ["api-version"] = "12", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "POST")
+	print(body)
+end
+function transferenpointen(nrtel)
+	local data = ""
+	refresh_data("https://api.zappka.app/transfer-points/users/phone-number/" .. nrtel,  data, {["app-device"] = "samsung SM-A600FN", ["app-version"] = "3.21.60", ["api-version"] = "12", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
+	print(body)
+	clientID = responded.client_id
 end
 function test()
 	local data = json.encode({idToken = boinaczejjebnie})
@@ -1047,6 +1095,18 @@ function love.textinput(text)
 		sendvercode(text)
 	elseif changes == "smscode" then
 		sendbackvercode(text)
+	elseif changes == "przelej" then
+		transferenpointen(text)
+		transfer2()
+	elseif changes == "pointsender" then
+		senderpoints = text
+		transfer3()
+	elseif changes == "opissender" then
+		senderopis = text
+		transfer4()
+	elseif changes == "recipe" then
+		recipename = text
+		sendlol()
 	end
 end
 function love.update(dt)
@@ -1065,7 +1125,9 @@ function love.update(dt)
 	else
 	   scrolltimerX = -150
 	end
-		
+	-- if state == "main_strona" then
+		-- licznik = updateYOffsetIndex()
+	-- end
     elapsedTimeFade = elapsedTimeFade + dt
 
     -- Check if the transition animation (scrolling) has completed
