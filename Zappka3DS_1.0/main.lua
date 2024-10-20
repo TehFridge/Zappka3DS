@@ -8,8 +8,6 @@ local ltn12 = require("ltn12")
 local bit = require("bit")    
 local sha1 = require("sha1")
 local struct = require("lib.struct")
-
-
 local reference = 0
 local scrolltimerX = -100
 local option_sel = 1
@@ -165,10 +163,7 @@ function love.load()
 			topki = responded
 	    end
 		state = "main_strona"
-    end
-    
-	
-	    
+    end    
     table.insert(buttons, createButton(195, 195, "assets/qrbutton.png", barcodenmachen, "main_strona", "barcode"))
 	table.insert(buttons, createButton(190, 155, "assets/przelejkurwa.png", przelejen, "main_strona", "dupa"))
 	if intranet == "false" then
@@ -328,23 +323,6 @@ end
 function refresh_data(url, request, inheaders, metoda)
     print(url)
 	print(request)
-	
-    
-    
-        
-        
-        
-		
-        
-        
-        
-        
-		
-		
-		
-        
-    
-    
 	local request_body = request 
     response_body = {}
     
@@ -359,9 +337,6 @@ function refresh_data(url, request, inheaders, metoda)
 		responded = json.decode(body)
 	end
 end
-
-
-
 
 function draw_top_screen(dt)
     if isScrolling == true then
@@ -407,7 +382,6 @@ function draw_top_screen(dt)
 			end
 		end
     elseif state == "barcode" then
-        
 		love.graphics.setColor(1, 1, 1, currentFade)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(1, 1, 1, 1)
@@ -428,11 +402,7 @@ function draw_top_screen(dt)
 			love.graphics.printf("Wciśnij Y", font, 5, barY + 110, 250, "center", 0, 1.55, 1.55)
 		end
 		love.graphics.setColor(0.27,0.84,0.43,currentFade)
-		
-		
-        
-		
-		
+	
 	elseif state == "login" then
         
 		love.graphics.setColor(1, 1, 1, 1)
@@ -459,7 +429,6 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered("Najprawdopodobniej nie masz certyfikatów SSL", 200, 80, {0.27,0.84,0.43,1}, font, 1.2)
 		TextDraw.DrawTextCentered("Zupdate'uj Homebrew Launcher/hb-menu", 200, 100, {0.27,0.84,0.43,1}, font, 1.2)
     elseif state == "promki" then
-        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -474,7 +443,6 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(responded[7].content.name, SCREEN_WIDTH/2, 210, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[8].content.name, SCREEN_WIDTH/2, 235, {0.27,0.84,0.43, 1}, font, 1.9)
 	elseif state == "promki_sel" then
-        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -487,12 +455,8 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(promki_nametable[5], SCREEN_WIDTH/2 + barY - 20, 160, {0.27,0.84,0.43, 1}, font, 1.9)
 		if piweczko == true then
 			TextDraw.DrawTextCentered(promki_nametable[6], SCREEN_WIDTH/2 + barY - 20, 185, {0.27,0.84,0.43, 1}, font, 1.9)
-		end
-        
-		
-		
+		end	
 	elseif state == "SSF" then
-        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -502,15 +466,13 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(responded[2].content.name, SCREEN_WIDTH/2 + barY - 20, 85, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[3].content.name, SCREEN_WIDTH/2 + barY - 20, 110, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[4].content.name, SCREEN_WIDTH/2 + barY - 20, 135, {0.27,0.84,0.43, 1}, font, 1.9)
-	elseif state == "bierzlubnie" then
-        
+	elseif state == "bierzlubnie" then  
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		if optiontable[1] == "true" then
 			love.graphics.draw(kuponimage, 60, -20, 0, 0.3, 0.3)
 		end
 	elseif state == "options" then
-        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -558,30 +520,6 @@ function draw_bottom_screen()
     SCREEN_HEIGHT = 240
     love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-	
-		
-		
-
-		
-		
-			
-			
-			
-			
-			
-			
-			
-			
-
-			
-			
-		
-	
-		
-		
-		
-			
-		
     
 	if loggedin == true then
 		if intranet == "false" then
