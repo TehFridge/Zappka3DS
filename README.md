@@ -1,4 +1,11 @@
 # Żappka3DS
+# BRICKED FOR NOW LMAO.
+
+PL: Do czasu aż nie przepisze całej apki do używnia nowych api calli to logowanie itp. jest nie możliwe, tho jak ktoś się już logował to może nadal kody generować.
+
+EN: Until ill rewrite the whole app to use new API calls then logging in etc. is not possible, tho if someone was already logged in then they can still generate QR Codes.
+
+![image](https://github.com/user-attachments/assets/8fa8f665-a7c8-482c-b8ef-76ff153f1cb5)
 
 
 # WE'RE BACK!
