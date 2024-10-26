@@ -8,9 +8,9 @@
 [metadata]
 title = "Zappka3DS"
 author = "TehFridge"
-description = "Jaka Parówa Wariacie?"
-version = "1.2.1"
-icons = { ctr = "icon.png", hac = "", cafe = "" }
+description = "Jaka parówa wariacie?"
+version = "1.2.2"
+icons = { ctr = "icon.png" }
 
 ## --- Build Options --- ##
 

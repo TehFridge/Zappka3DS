@@ -48,12 +48,10 @@ local sfx2 = love.audio.newSource("bgm/sfx2.ogg", "static")
 local jsonread = true
 local numSegments = 126 
 local offsets = {}      
-
 local offsetChannel = love.thread.getChannel("offsetChannel")
 local buttons = {}
 local sin = math.sin
 local pi = math.pi
-
 name = "blank"
 codeforinput = "blank"
 opcjeexist = love.filesystem.exists("opcje.lua")
@@ -100,7 +98,7 @@ local function updateYOffsetIndex() yOffsetIndex = (yOffsetIndex + 1) % 126 end
 function love.load()
     
 	redeemedstatus = "default"
-	APP_VER = "v1.2_final"
+	APP_VER = "v1.2.2_apifix"
 	if opcjeexist then
 		local loadedTable = loadTableFromFile("opcje.lua")
 		if loadedTable then
@@ -134,16 +132,22 @@ function love.load()
 	  else 
 	    codeforinput = love.filesystem.read("secret.hex.txt")
 		id = love.filesystem.read("id.txt")
-		authtoken = love.filesystem.read("token.txt")
+		mentos = love.filesystem.read("refresh.txt")
+		jsonread = true
+		local data = json.encode({grantType = "refresh_token", refreshToken = mentos})
+		refresh_data("https://securetoken.googleapis.com/v1/token?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
+		mentos = responded.refresh_token
+		authtoken = responded.access_token
+		love.filesystem.write("refresh.txt", mentos)
 		jsonread = false
 		updatezappsy() 
-		if not string.find(body, "uuid") then
+		if not string.find(body, "points") then
 			intranet = "true"
 		else
 			intranet = "false"
 			jsonread = true
 			updatezappsy()
-			zappsy = responded.content.points
+			zappsy = responded.data.loyaltyProgram.points
 			if updatetime_withserver() < 1727128800 then
 				promki_table = {"Prosto_z_Pieca", "kat_lody", "kat_napoje", "kat_wiekszyglod", "Na_kanapke", "kat_piwo"}
 				promki_nametable = {"Streetfood", "Lody", "Napoje", "Głodny?", "Wszystko na Kanapkę.", "Może Piwko?"}
@@ -155,19 +159,23 @@ function love.load()
 				SSF = false
 				print("SSF false")
 			end
-			refresh_data("https://zabka-snrs.zabka.pl/schema-service/v2/documents/specialoffersettings/generate", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
-			if responded.content.alcohol_eligibility == "1" then
+			-- refresh_data("https://zabka-snrs.zabka.pl/schema-service/v2/documents/specialoffersettings/generate", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
+			-- if responded.content.alcohol_eligibility == "1" then
 				piweczko = true
-			end
-			refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=kat_top&sort=priority%2Cdesc",  data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
-			topki = responded
+			-- end
+			-- refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=kat_top&sort=priority%2Cdesc",  data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
+			-- topki = responded
 	    end
 		state = "main_strona"
-    end    
+    end
+    
+	
+	    
     table.insert(buttons, createButton(195, 195, "assets/qrbutton.png", barcodenmachen, "main_strona", "barcode"))
-	table.insert(buttons, createButton(190, 155, "assets/przelejkurwa.png", przelejen, "main_strona", "dupa"))
+	--table.insert(buttons, createButton(190, 155, "assets/przelejkurwa.png", przelejen, "main_strona", "dupa"))
 	if intranet == "false" then
-		table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
+		--table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
+		table.insert(buttons, createButton(5, 195, "assets/kuponybuttondis.png", nimafornow, "main_strona", "nima"))
 	end
 	table.insert(buttons, createButton(275, 5, "assets/exit.png", exitenmachen, "promki", "bierzlubnie"))
 	table.insert(buttons, createButton(5, 10, "assets/settings.png", optenmachen, "main_strona", "options"))
@@ -295,8 +303,8 @@ function calculatetotp()
 			local magicNumber = bit.band(c(outputBytes, offset + 1), javaIntMax) % 1000000  
 			totp = string.format("%06d", magicNumber)
 			print(totp)
-			print("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
-			qr1 = qrcode("https://zlgn.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
+			print("https://srln.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
+			qr1 = qrcode("https://srln.pl/view/dashboard?ploy=" .. id .. "&loyal=" .. totp)
 			generated_once = true
 		else
 			print("outputBytes too short: " .. #outputBytes)
@@ -335,6 +343,17 @@ function refresh_data(url, request, inheaders, metoda)
 	print(code)
 	if jsonread == true then
 		responded = json.decode(body)
+	end
+end
+
+
+function nimafornow()
+	if state == "nima" then
+		sfx2:play()
+		state = "main_strona"
+	elseif state == "main_strona" then
+		sfx:play()
+		state = "nima"
 	end
 end
 
@@ -382,6 +401,7 @@ function draw_top_screen(dt)
 			end
 		end
     elseif state == "barcode" then
+        
 		love.graphics.setColor(1, 1, 1, currentFade)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(1, 1, 1, 1)
@@ -402,7 +422,11 @@ function draw_top_screen(dt)
 			love.graphics.printf("Wciśnij Y", font, 5, barY + 110, 250, "center", 0, 1.55, 1.55)
 		end
 		love.graphics.setColor(0.27,0.84,0.43,currentFade)
-	
+		
+		
+        
+		
+		
 	elseif state == "login" then
         
 		love.graphics.setColor(1, 1, 1, 1)
@@ -429,6 +453,7 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered("Najprawdopodobniej nie masz certyfikatów SSL", 200, 80, {0.27,0.84,0.43,1}, font, 1.2)
 		TextDraw.DrawTextCentered("Zupdate'uj Homebrew Launcher/hb-menu", 200, 100, {0.27,0.84,0.43,1}, font, 1.2)
     elseif state == "promki" then
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -442,7 +467,14 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(responded[6].content.name, SCREEN_WIDTH/2, 185, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[7].content.name, SCREEN_WIDTH/2, 210, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[8].content.name, SCREEN_WIDTH/2, 235, {0.27,0.84,0.43, 1}, font, 1.9)
+    elseif state == "nima" then
+		love.graphics.setColor(1, 1, 1, 1)
+		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+		love.graphics.setColor(0.27,0.84,0.43,1)
+		TextDraw.DrawTextCentered("Kupony z nowym API", SCREEN_WIDTH/2, 60, {0.27,0.84,0.43, 1}, font, 1.9)
+		TextDraw.DrawTextCentered("not implemented lol", SCREEN_WIDTH/2, 85, {0.27,0.84,0.43, 1}, font, 1.9)
 	elseif state == "promki_sel" then
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -455,8 +487,12 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(promki_nametable[5], SCREEN_WIDTH/2 + barY - 20, 160, {0.27,0.84,0.43, 1}, font, 1.9)
 		if piweczko == true then
 			TextDraw.DrawTextCentered(promki_nametable[6], SCREEN_WIDTH/2 + barY - 20, 185, {0.27,0.84,0.43, 1}, font, 1.9)
-		end	
+		end
+        
+		
+		
 	elseif state == "SSF" then
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -466,13 +502,15 @@ function draw_top_screen(dt)
 		TextDraw.DrawTextCentered(responded[2].content.name, SCREEN_WIDTH/2 + barY - 20, 85, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[3].content.name, SCREEN_WIDTH/2 + barY - 20, 110, {0.27,0.84,0.43, 1}, font, 1.9)
 		TextDraw.DrawTextCentered(responded[4].content.name, SCREEN_WIDTH/2 + barY - 20, 135, {0.27,0.84,0.43, 1}, font, 1.9)
-	elseif state == "bierzlubnie" then  
+	elseif state == "bierzlubnie" then
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		if optiontable[1] == "true" then
 			love.graphics.draw(kuponimage, 60, -20, 0, 0.3, 0.3)
 		end
 	elseif state == "options" then
+        
 		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 		love.graphics.setColor(0.27,0.84,0.43,1)
@@ -520,7 +558,6 @@ function draw_bottom_screen()
     SCREEN_HEIGHT = 240
     love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-    
 	if loggedin == true then
 		if intranet == "false" then
 			TextDraw.DrawTextCentered('Ilość Żappsów: ' .. zappsy, 320/2, 25, {0.27,0.84,0.43, 1}, font, 2.1)
@@ -531,17 +568,17 @@ function draw_bottom_screen()
 			love.graphics.print('(nwm czas w 3dsach jakiś zjebany jest)', font, 0, 225, 0, 1.2, 1.2)
 		end
 		if state == "main_strona" then
-			limit = 5
-			if intranet == "false" then
-				TextDraw.DrawText("Góra/Dół - Wybierz         A - Zatwierdź" , 20, 35, {0,0,0,1}, font, 1.5)
-				love.graphics.print("->", font, 0, (promka_sel2 * 20 ) + 50, 0, 2)
-				TextDraw.DrawText("Nasze Sztosy", 20, 55, {0.27,0.84,0.43, 1}, font, 1.9)
-				TextDraw.DrawText(topki[3].content.name, 20, 75, {0.27,0.84,0.43, 1}, font, 1.5)
-				TextDraw.DrawText(topki[4].content.name, 20, 95, {0.27,0.84,0.43, 1}, font, 1.5)
-				TextDraw.DrawText(topki[5].content.name, 20, 115, {0.27,0.84,0.43, 1}, font, 1.5)
-				TextDraw.DrawText(topki[6].content.name, 20, 135, {0.27,0.84,0.43, 1}, font, 1.5)
-				TextDraw.DrawText(topki[7].content.name, 20, 155, {0.27,0.84,0.43, 1}, font, 1.5)
-			end
+			-- limit = 5
+			-- if intranet == "false" then
+				-- TextDraw.DrawText("Góra/Dół - Wybierz         A - Zatwierdź" , 20, 35, {0,0,0,1}, font, 1.5)
+				-- love.graphics.print("->", font, 0, (promka_sel2 * 20 ) + 50, 0, 2)
+				-- TextDraw.DrawText("Nasze Sztosy", 20, 55, {0.27,0.84,0.43, 1}, font, 1.9)
+				-- TextDraw.DrawText(topki[3].content.name, 20, 75, {0.27,0.84,0.43, 1}, font, 1.5)
+				-- TextDraw.DrawText(topki[4].content.name, 20, 95, {0.27,0.84,0.43, 1}, font, 1.5)
+				-- TextDraw.DrawText(topki[5].content.name, 20, 115, {0.27,0.84,0.43, 1}, font, 1.5)
+				-- TextDraw.DrawText(topki[6].content.name, 20, 135, {0.27,0.84,0.43, 1}, font, 1.5)
+				-- TextDraw.DrawText(topki[7].content.name, 20, 155, {0.27,0.84,0.43, 1}, font, 1.5)
+			-- end
 		elseif state == "promki_sel" or state == "promki" or state == "options" then
 			TextDraw.DrawText("Góra/Dół - Wybierz         A - Zatwierdź" , 20, 35, {0,0,0,1}, font, 1.5)
 		elseif state == "barcode" then
@@ -655,7 +692,7 @@ function love.gamepadpressed(joystick, button)
 		elseif state == "promki_sel" then
 			image = false
 			updatepromki(promki_table[promka_sel])
-		elseif state == "promki" or state == "SSF" or state == "main_strona" then
+		elseif state == "promki" or state == "SSF" then
 			if intranet == "false" then
 				if state == "main_strona" then
 					if topki[promka_sel2 + 2].content.possibleRedeems <= 0 then
@@ -722,30 +759,31 @@ function love.gamepadpressed(joystick, button)
 	end
 	if intranet == "false" then
 		if button == "rightshoulder" then
-			if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
-				sfx2:play()
-				jsonread = true
-				image = false
-				state = "main_strona"
+			-- if state == "promki_sel" or state == "promki" or state == "bierzlubnie" then
+				-- sfx2:play()
+				-- jsonread = true
+				-- image = false
+				-- state = "main_strona"
 				
-			elseif state == "main_strona" then
-				sfx:play()
+			-- elseif state == "main_strona" then
+				-- sfx:play()
 				
-				state = "promki_sel" 
+				-- state = "promki_sel" 
 				
 				
-				isScrolling = true
-				isFading = true
-				elapsedTime = 0  
-				elapsedTimeFade = 0
-			end
+				-- isScrolling = true
+				-- isFading = true
+				-- elapsedTime = 0  
+				-- elapsedTimeFade = 0
+			-- end
+			nimafornow()
 		end
 		if button == "leftshoulder" then
 			if state == "main_strona" then
 				image = false
 				jsonread = true
 				updatezappsy()
-				zappsy = responded.content.points
+				zappsy = responded.data.loyaltyProgram.points
 			end
 		end
 	end
@@ -773,18 +811,18 @@ function love.gamepadpressed(joystick, button)
 			end
 		end
 	end
-	if state == "promki" or state == "SSF" or state == "main_strona" then
-		if button == "dpdown" then
-			if promka_sel2 < limit then
-				promka_sel2 = promka_sel2 + 1
-			end
-		end
-		if button == "dpup" then
-			if promka_sel2 > 1 then
-				promka_sel2 = promka_sel2 - 1
-			end
-		end
-	end
+	-- if state == "promki" or state == "SSF" or state == "main_strona" then
+		-- if button == "dpdown" then
+			-- if promka_sel2 < limit then
+				-- promka_sel2 = promka_sel2 + 1
+			-- end
+		-- end
+		-- if button == "dpup" then
+			-- if promka_sel2 > 1 then
+				-- promka_sel2 = promka_sel2 - 1
+			-- end
+		-- end
+	-- end
 	if state == "bierzlubnie" then
 		if button == "back" then
 			if niedlapsakurwa == false then
@@ -813,7 +851,7 @@ function dawajmito(uuid_value, spowrotem)
 		jsonread = true
 		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/get-item-for-client/uuid/" .. uuid_value, "", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
 		updatezappsy()
-		zappsy = responded.content.points
+		zappsy = responded.data.loyaltyProgram.points
 		timerIncrement = 1
 		showredeemedtime = 0
 	else
@@ -831,7 +869,7 @@ function dawajmito(uuid_value, spowrotem)
 		jsonread = true
 		refresh_data("https://zabka-snrs.zabka.pl/v4/promotions/promotion/get-item-for-client/uuid/" .. uuid_value, "", {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
 		updatezappsy()
-		zappsy = responded.content.points
+		zappsy = responded.data.loyaltyProgram.points
 		timerIncrement = 1
 		showredeemedtime = 0
 	end
@@ -879,10 +917,11 @@ function png_acja()
 	kuponimage = love.graphics.newImage(imageData)
 end
 function updatezappsy()
-	refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=kat_top&sort=priority%2Cdesc",  data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
-	topki = responded
-	local data = ""
-	refresh_data("https://zabka-snrs.zabka.pl/schema-service/v2/documents/points/generate", data, {["Cache-Control"] = "no-cache", ["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
+	--refresh_data("https://zabka-snrs.zabka.pl/schema-service/proxy/promotions?page=1&limit=20&type=CUSTOM&status=ASSIGNED%2CACTIVE&tagNames=kat_top&sort=priority%2Cdesc",  data, {["api-version"] = "4.4", ["authorization"] = "Bearer " .. authtoken, ["content-type"] = "application/json", ["accept"] = "application/json", ["user-agent"] = "okhttp/4.12.0"}, "GET")
+	--topki = responded
+	local data = json.encode({operationName = "LoyaltyPoints", query = "query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }", variables = {}})
+	local data = data:gsub('"variables":%[%]', '"variables":{}')
+	refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
 end
 function updatessf()
 	local data = ""
@@ -904,7 +943,7 @@ function tel_login()
 	if love._potion_version == nil then
 		if gui_design_mode == false then
 			handle_authflow()
-			numertel = "numertel"
+			numertel = "660222062"
 			sendvercode(numertel)
 			test()
 		end
@@ -977,32 +1016,38 @@ end
 function sendbackvercode(smscode)  
 	if gui_design_mode == false then
 		local data = json.encode({operationName = "SignInWithPhone",variables = {input = {phoneNumber = {countryCode = "48", nationalNumber = numertel},verificationCode = smscode}}, query = "mutation SignInWithPhone($input: SignInInput!) { signIn(input: $input) { customToken } }"})
-		refresh_data("https://super-account.spapp.zabka.pl/", data, {["content-type"] = "application/json", ["authorization"] = "Bearer " .. boinaczejjebnie, ["user-agent"] = "okhttp/4.12.0", ["x-apollo-operation-id"] = "a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de"	,["x-apollo-operation-name"] = "SignInWithPhone", ["accept"] = "multipart/mixed; deferSpec=20220824, application/json", ["content-length"] = "250"}, "POST")
+		refresh_data("https://super-account.spapp.zabka.pl/", data, {["content-type"] = "application/json", ["authorization"] = "Bearer " .. boinaczejjebnie, ["user-agent"] = "okhttp/4.12.0", ["x-apollo-operation-id"] = "a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de"	,["x-apollo-operation-name"] = "SignInWithPhone", ["accept"] = "multipart/mixed; deferSpec=20220824, application/json"}, "POST")
 		
 		
 		local tokentemp = responded.data.signIn.customToken
 		local data = json.encode({token = tokentemp, returnSecureToken = "true"})
 		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
+		local refreshtemp = responded.refreshToken
 		local tokentemp = responded.idToken
 		local data = json.encode({idToken = tokentemp})
 		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", data, {["content-type"] = "application/json"}, "POST")
 		loadingtext = "Logowanie 45%..."
 		uuidgen.seed()
-		local data = json.encode({identityProviderToken = tokentemp, identityProvider = "OAUTH", apiKey = "b646c65e-a43d-4a61-9294-6c7c4385c762", uuid = uuidgen(), deviceId = "0432b18513e325a5"})
-		refresh_data("https://zabka-snrs.zabka.pl/sauth/v3/auth/login/client/conditional", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8"}, "POST")
+		local data = json.encode({operationName = "SignIn",query = "mutation SignIn($signInInput: SignInInput!) { signIn(signInInput: $signInInput) { profile { __typename ...UserProfileParts } } }  fragment UserProfileParts on UserProfile { email gender }",variables = {signInInput = {sessionId = "65da013a-0d7d-3ad4-82bd-2bc15077d7f5"}}})
+		refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. tokentemp}, "POST")
 		loadingtext = "Logowanie 65%..."
-		authtoken = responded.token
-		local data = ""
-		refresh_data("https://qr-bff.spapp.zabka.pl/qr-code/secret", data, {["authorization"] = "Bearer " .. tokentemp, ["content-type"] = "application/json", ["accept"] = "application/json", ["app"] = "zappka-mobile", ["user-agent"] = "okhttp/4.12.0", ["content-length"] = "0"}, "GET")
-		id = responded.userId
-		love.filesystem.write("secret.hex.txt", responded.secrets.loyal)
+		authtoken = tokentemp
+		print(authtoken)
+		local data = json.encode({operationName = "QrCode", query ="query QrCode { qrCode { loyalSecret paySecret ployId } }", variables = {}})
+		local data = data:gsub('"variables":%[%]', '"variables":{}')
+		refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
+		id = responded.data.qrCode.ployId
+		love.filesystem.write("secret.hex.txt", responded.data.qrCode.loyalSecret)
 		love.filesystem.write("id.txt", id)
 		love.filesystem.write("token.txt", authtoken)
-		refresh_data("https://zabka-snrs.zabka.pl/v4/my-account/personal-information", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")	
-		name = responded.firstName
-		love.filesystem.write("imie.txt", responded.firstName)
+		local data = json.encode({operationName = "GetProfile", query = "query GetProfile { profile { id firstName birthDate phoneNumber { countryCode nationalNumber } email } }",variables = {}})
+		local data = data:gsub('"variables":%[%]', '"variables":{}')
+		refresh_data("https://super-account.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. tokentemp}, "POST")	
+		name = responded.data.profile.firstName
+		love.filesystem.write("imie.txt", name)
+		love.filesystem.write("refresh.txt", refreshtemp)
 		updatezappsy()
-		zappsy = responded.content.points
+		zappsy = responded.data.loyaltyProgram.points
 		calculatetotp()
 	end
 	state = "restartplz"
