@@ -19,7 +19,7 @@ return
     c          = "button:x",
     v          = "button:y",
     ["return"] = "button:start",
-    rshift     = "button:select",
+    rshift     = "button:back",
     ["1"]      = "axis:lefttrigger+",
     ["2"]      = "axis:righttrigger+",
 
