@@ -11,13 +11,6 @@ Get your Żappsy™ straight with Żappka3DS
 
 ![image](https://github.com/user-attachments/assets/9f5dfd38-43b5-49cf-acb9-32eba8299adb)
 
-
-
-# Usage
-A - Show Your Barcode
-
-X - Change Your Name (when the textbox appears type there any name you want)
-
 # Installation 
 Just download the Zappka3DS.3dsx and put it in the /3ds folder on your SD Card.
 
