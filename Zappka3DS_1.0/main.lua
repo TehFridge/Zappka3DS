@@ -31,11 +31,12 @@ local endY = 210
 local startFade = 1          
 local endFade = 0.5            
 local startbarY = 300          
-local endbarY = 20            
+local endbarY = 15            
 local isScrolling = false
 local isFading = false
 local currentY = startY
 local banner = love.graphics.newImage("assets/banner.png")
+local qrwatermark = love.graphics.newImage("assets/zappka_qr_logo.png")
 local bottomdark = love.graphics.newImage("assets/logo.png")
 local failed = love.graphics.newImage("assets/failed.png")
 local success = love.graphics.newImage("assets/success.png")
@@ -331,8 +332,8 @@ function reloadmenu()
 end
 
 function refresh_data(url, request, inheaders, metoda)
-    --print(url)
-	--print(request)
+    print(url)
+	print(request)
 	local request_body = request 
     response_body = {}
     
@@ -342,7 +343,8 @@ function refresh_data(url, request, inheaders, metoda)
 		code, imagebody, headers = https.request(url, {data = request_body, method = metoda, headers = inheaders})
 	end
 	
-	--print(code)
+	print(code)
+	print(body)
 	if jsonread == true then
 		responded = json.decode(body)
 	end
@@ -425,7 +427,9 @@ function draw_top_screen(dt)
 		love.graphics.setColor(0, 0, 0, 1)
 		if generated_once == true then
 			if qr1 then
-				qr1:draw(95,barY,0,6.5)
+				qr1:draw(90,barY - 3,0,5)
+				love.graphics.setColor(1, 1, 1, 1)
+				love.graphics.draw(qrwatermark, 0,barY - 10)
 			else
 				love.graphics.printf("Coś poszło nie tak!", font, 5, barY + 90, 250, "center", 0, 1.55, 1.55)
 				love.graphics.printf("Spróbuj ponownie póżniej.", font, 5, barY + 110, 250, "center", 0, 1.55, 1.55)
@@ -639,11 +643,21 @@ function draw_bottom_screen()
 				kurwalimit = #mojekupony.data.couponWallet.coupons
 				if kurwalimit < 6 then
 					for i = 1, kurwalimit do 
-						TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+						--print(mojekupony.data.couponWallet.coupons[i + pagegap].__typename)
+						if mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon ~= nil then
+							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+						elseif mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon ~= nil then
+							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+						end
+						--print("Done")
 					end
 				else 
 					for i = 1, 6 do
-						TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+						if mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon ~= nil then
+							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+						elseif mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon ~= nil then
+							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+						end
 					end
 				end
 			else 
@@ -779,28 +793,53 @@ function love.gamepadpressed(joystick, button)
 		elseif state == "promki" or state == "SSF" or state == "main_strona" then
 			if intranet == "false" then
 				if state == "main_strona" and #mojekupony.data.couponWallet.coupons ~= 0 then
-					if mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.state ~= "ACTIVATED" then
-						niedlapsakurwa = false
-						print("nie aktywowany")
-						--print(topki[promka_sel2 + 2].content.name)
-					else
-						niedlapsakurwa = true
-						print("aktywowany")
-						--print(topki[promka_sel2 + 2].content.name)
-					end
-					if optiontable[1] == "true" then
-						if love._potion_version == nil then
-							png_acja()
+					if mojekupony.data.couponWallet.coupons[selectioncode + pagegap].__typename == "SingleCoupon" then
+						if mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.state ~= "ACTIVATED" then
+							niedlapsakurwa = false
+							print("nie aktywowany")
+							--print(topki[promka_sel2 + 2].content.name)
 						else
-							t3x_acja()
+							niedlapsakurwa = true
+							print("aktywowany")
+							--print(topki[promka_sel2 + 2].content.name)
 						end
+						if optiontable[1] == "true" then
+							if love._potion_version == nil then
+								png_acja()
+							else
+								t3x_acja()
+							end
+						end
+						textname = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.targetPromotion.name
+						opis = "Kupon"
+						punktykurwa = 0
+						numredeem = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.possibleRedeems
+						uuid = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.id
+						kuponsingular = true
+					elseif mojekupony.data.couponWallet.coupons[selectioncode + pagegap].__typename == "StackPloyCoupon" then
+						if mojekupony.data.couponWallet.coupons[selectioncode + pagegap].ployCoupon.state ~= "ACTIVATED" then
+							niedlapsakurwa = false
+							print("nie aktywowany")
+							--print(topki[promka_sel2 + 2].content.name)
+						else
+							niedlapsakurwa = true
+							print("aktywowany")
+							--print(topki[promka_sel2 + 2].content.name)
+						end
+						if optiontable[1] == "true" then
+							if love._potion_version == nil then
+								png_acja()
+							else
+								t3x_acja()
+							end
+						end
+						textname = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].ployCoupon.targetPromotion.name
+						opis = "Kupon"
+						punktykurwa = 0
+						numredeem = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].ployCoupon.possibleRedeems
+						uuid = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].ployCoupon.id
+						kuponsingular = true
 					end
-					textname = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.targetPromotion.name
-					opis = "Kupon"
-					punktykurwa = 0
-					numredeem = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.possibleRedeems
-					uuid = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.id
-					kuponsingular = true
 					state = "bierzlubnie"
 				elseif state == "promki" then
 					local data = json.encode({operationName = "PloyOfferDetails", query = "query PloyOfferDetails($ployOfferId: ID!) { ployOffer(ployOfferId: $ployOfferId) { ployOffer { __typename ...PloyOfferParts id } details { __typename ...RichTextWithHeaderParts } } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment RichTextWithHeaderParts on RichTextWithHeader { header richText }", variables = { ployOfferId = currentpromkitable.data.ployOfferListing.ployOffers[selectioncode + pagegap].id}})
@@ -947,10 +986,11 @@ function dawajmito(uuid_value, spowrotem)
 		jsonread = false
 		local data = json.encode({operationName = "ActivateCoupon",query = "mutation ActivateCoupon($activateCouponInput: ActivateCouponInput!) { activateCoupon(activateCouponInput: $activateCouponInput) { __typename } }",variables = {activateCouponInput = {amount = 1,couponId = uuid}}})
 		refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
-		if code == 200 then
+		successcode = code
+		if successcode == 200 then
 			print("success act")
 			redeemedstatus = "success"
-		elseif code == 412 then
+		else
 			print("failed act")
 			redeemedstatus = "failed"
 		end
@@ -966,10 +1006,11 @@ function dawajmito(uuid_value, spowrotem)
 		jsonread = false
         local data = json.encode({operationName = "DeactivateCoupon",query = "mutation DeactivateCoupon($input: DeactivateCouponInput!) { deactivateCoupon(deactivateCouponInput: $input) { __typename } }",variables = {input = {couponId = uuid}}})
 		refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
-		if code == 200 then
+		successcode = code
+		if successcode == 200 then
 			print("success deact")
 			redeemedstatus = "success"
-		elseif code == 412 then
+		else
 			print("failed deact")
 			redeemedstatus = "failed"
 		end
@@ -1002,13 +1043,23 @@ function updatetime_withserver()
 end
 function t3x_acja()
 	if state == "main_strona" then
-		local urlt3x = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.targetPromotion.image.url
-		local urlt3x = urlt3x:gsub('webp', 'png')
-		local data = json.encode({url = urlt3x})
-		image = true
-		refresh_data("https://api.szprink.xyz/t3x/convert", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json"}, "POST")
-		local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.t3x"))
-		kuponimage = love.graphics.newImage(imageData)
+		if mojekupony.data.couponWallet.coupons[selectioncode + pagegap].__typename == "SingleCoupon" then
+			local urlt3x = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.targetPromotion.image.url
+			local urlt3x = urlt3x:gsub('webp', 'png')
+			local data = json.encode({url = urlt3x})
+			image = true
+			refresh_data("https://api.szprink.xyz/t3x/convert", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json"}, "POST")
+			local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.t3x"))
+			kuponimage = love.graphics.newImage(imageData)
+		elseif mojekupony.data.couponWallet.coupons[selectioncode + pagegap].__typename == "StackPloyCoupon" then
+			local urlt3x = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].ployCoupon.targetPromotion.image.url
+			local urlt3x = urlt3x:gsub('webp', 'png')
+			local data = json.encode({url = urlt3x})
+			image = true
+			refresh_data("https://api.szprink.xyz/t3x/convert", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json"}, "POST")
+			local imageData = love.image.newImageData(love.filesystem.newFileData(imagebody, "image.t3x"))
+			kuponimage = love.graphics.newImage(imageData)
+		end
 	else
 		local urlt3x = responded.data.ployOffer.ployOffer.coupon.targetPromotion.image.url
 		local urlt3x = urlt3x:gsub('webp', 'png')
@@ -1022,9 +1073,15 @@ end
 function png_acja()
 	image = true
 	if state == "main_strona" then
-		local url = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.targetPromotion.image.url
-		local url = url:gsub('webp', 'png')
-		refresh_data(url, data, {}, "GET")
+		if mojekupony.data.couponWallet.coupons[selectioncode + pagegap].__typename == "SingleCoupon" then
+			local url = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].singleCoupon.targetPromotion.image.url
+			local url = url:gsub('webp', 'png')
+			refresh_data(url, data, {}, "GET")
+		elseif mojekupony.data.couponWallet.coupons[selectioncode + pagegap].__typename == "StackPloyCoupon" then
+			local url = mojekupony.data.couponWallet.coupons[selectioncode + pagegap].ployCoupon.targetPromotion.image.url
+			local url = url:gsub('webp', 'png')
+			refresh_data(url, data, {}, "GET")
+		end
 	else
 		local url = responded.data.ployOffer.ployOffer.coupon.targetPromotion.image.url
 		local url = url:gsub('webp', 'png')
