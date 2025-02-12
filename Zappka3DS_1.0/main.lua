@@ -16,6 +16,8 @@ local qrcal = "true"
 local wavelogo = "true"
 local imageload = "true"
 local promka_sel2 = 1
+local tempzm = 1
+local scrollxmachen = 0
 local SCREEN_WIDTH = 400 
 local memoryLimit = 2048 
 local SCREEN_HEIGHT = 240
@@ -56,7 +58,7 @@ local sin = math.sin
 local pi = math.pi
 name = "blank"
 codeforinput = "blank"
-opcjeexist = love.filesystem.exists("opcje.lua")
+opcjeexist = love.filesystem.exists("opcje.json")
 loggedin = love.filesystem.exists("secret.hex.txt")
 existsname = love.filesystem.exists("imie.txt")
 love.graphics.setDefaultFilter("nearest")
@@ -103,16 +105,10 @@ function love.load()
 	redeemedstatus = "default"
 	APP_VER = "v1.2.3_NewYear"
 	if opcjeexist then
-		local loadedTable = loadTableFromFile("opcje.lua")
-		if loadedTable then
-			optiontable = loadedTable
-			print("Table loaded successfully!")
-		else
-			print("Failed to load the table.")
-		end
+		optiontable = json.decode(love.filesystem.read("opcje.json"))
 	else 
 		optiontable = {imageload, qrcal, wavelogo}
-		saveTableToFile(optiontable, "opcje.lua")
+		love.filesystem.write("opcje.json", json.encode(optiontable))
 	end
 	generated_once = false
 	if existsname == false then 
@@ -179,6 +175,7 @@ function love.load()
 	--table.insert(buttons, createButton(190, 155, "assets/przelejkurwa.png", przelejen, "main_strona", "dupa"))
 	if intranet == "false" then
 		table.insert(buttons, createButton(5, 195, "assets/kuponybutton.png", kuponmachen, "main_strona", "promki_sel"))
+		table.insert(buttons, createButton(190, 155, "assets/hstmachen.png", zappsmahcen, "main_strona", "historia"))
 		--table.insert(buttons, createButton(5, 195, "assets/kuponybuttondis.png", nimafornow, "main_strona", "nima"))
 	end
 	table.insert(buttons, createButton(275, 5, "assets/exit.png", exitenmachen, "promki", "bierzlubnie"))
@@ -242,29 +239,7 @@ function createButton(x, y, imagePath, callback, statename, secstatename, thrdst
         end
     }
 end
-function serializeTable(tbl, depth)
-    depth = depth or 0
-    local output = "{\n"
-    
-    for key, value in pairs(tbl) do
-        local formattedKey = type(key) == "string" and string.format("[%q]", key) or "[" .. key .. "]"
-        
-        if type(value) == "table" then
-            output = output .. string.rep(" ", depth + 4) .. formattedKey .. " = " .. serializeTable(value, depth + 4) .. ",\n"
-        else
-            local formattedValue = type(value) == "string" and string.format("%q", value) or tostring(value)
-            output = output .. string.rep(" ", depth + 4) .. formattedKey .. " = " .. formattedValue .. ",\n"
-        end
-    end
-    
-    output = output .. string.rep(" ", depth) .. "}"
-    return output
-end
 
-function saveTableToFile(tbl, filename)
-    local serializedData = "return " .. serializeTable(tbl)
-    love.filesystem.write(filename, serializedData)
-end
 function calculatetotp()
 	local javaIntMax = 2147483647
 
@@ -280,6 +255,11 @@ function calculatetotp()
 	local secret = (secretHex:gsub('..', function(hex)
 		return string.char(tonumber(hex, 16))
 	end))
+	print("Secret (hex):")
+	for i = 1, #secret do
+		io.write(string.format("%02X ", string.byte(secret, i)))
+	end
+	print()  -- Newline for formatting
 
 	if intranet == "true" then
 		czas = alt_kalibracja()
@@ -292,7 +272,17 @@ function calculatetotp()
 	print(ts)
 
 	local msg = struct.pack(">L8", ts)
+	local hexBytes = {}
+	for i = 1, #msg do
+		hexBytes[i] = string.format("%02X", string.byte(msg, i))
+	end
+	print("msg (hex): " .. table.concat(hexBytes, " "))
 	local outputBytes = sha1.hmac_binary(secret, msg)
+	local hexBytes = {}
+	for i = 1, #outputBytes do
+		hexBytes[i] = string.format("%02X", string.byte(outputBytes, i))
+	end
+	print("outbytes: " .. table.concat(hexBytes, " "))
 
 	if outputBytes ~= nil then
 		
@@ -303,7 +293,8 @@ function calculatetotp()
 			print("byteIndex: " .. byteIndex)
 			print("offset: " .. offset)
 
-			
+			print(c(outputBytes, offset + 1))
+			print(bit.band(c(outputBytes, offset + 1), javaIntMax))
 			local magicNumber = bit.band(c(outputBytes, offset + 1), javaIntMax) % 1000000  
 			totp = string.format("%06d", magicNumber)
 			print(totp)
@@ -584,6 +575,48 @@ function draw_top_screen(dt)
 		love.graphics.print('Oprawa graficzna - layt_ (https://github.com/Laytdesu)', font, 0, 210, 0, 1.2, 1.2)
 		love.graphics.print('Ikonki - Font Awesome (https://fontawesome.com/)', font, 0, 225, 0, 1.2, 1.2)
 		TextDraw.DrawTextCentered("Falujące logo: " .. optiontable[3], SCREEN_WIDTH/2, 110, {0.27,0.84,0.43, 1}, font, 1.9)
+	elseif state == "historia" then
+		love.graphics.setColor(1, 1, 1, 1)
+		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+		love.graphics.setColor(0.27,0.84,0.43,1)
+		--love.graphics.print("->", font, -barY + 50, (promka_sel * 26 ) + 10, 0, 3)
+		TextDraw.DrawTextCentered("kurwa żappsy:", SCREEN_WIDTH/2, -15 + 45, {0.27,0.84,0.43, 1}, font, 3.2)
+		-- TextDraw.DrawTextCentered(promki_nametable[1], SCREEN_WIDTH/2 + barY - 20, 60, {0.27,0.84,0.43, 1}, font, 1.9)
+		-- TextDraw.DrawTextCentered(promki_nametable[2], SCREEN_WIDTH/2 + barY - 20, 85, {0.27,0.84,0.43, 1}, font, 1.9)
+		-- TextDraw.DrawTextCentered(promki_nametable[3], SCREEN_WIDTH/2 + barY - 20, 110, {0.27,0.84,0.43, 1}, font, 1.9)
+		-- TextDraw.DrawTextCentered(promki_nametable[4], SCREEN_WIDTH/2 + barY - 20, 135, {0.27,0.84,0.43, 1}, font, 1.9)
+		-- TextDraw.DrawTextCentered(promki_nametable[5], SCREEN_WIDTH/2 + barY - 20, 160, {0.27,0.84,0.43, 1}, font, 1.9)
+		TextDraw.DrawText("->", 5, 50 + selectioncode * 20, {0.27,0.84,0.43, 1}, font, 1.9, true)
+		kurwalimit = #currentzappsytable
+		if #currentzappsytable < 6 then
+			for i = 1, #currentzappsytable do 
+				if currentzappsytable[i + pagegap].title:len() > 35 then
+					if selectioncode + pagegap == i + pagegap - (6 - selectioncode) then
+						scrollxmachen = scrollxmachen + 0.05
+					else 
+						scrollxmachen = 0
+					end
+					TextDraw.DrawText(currentzappsytable[i + pagegap].title .. "  " .. currentzappsytable[i + pagegap].points .. " Żappsów", 27 - scrollxmachen, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.6, true)
+				else
+					TextDraw.DrawText(currentzappsytable[i + pagegap].title .. "  " .. currentzappsytable[i + pagegap].points .. " Żappsów", 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.6, true)
+				end
+				tempzm = i
+			end
+		else 
+			for i = 1, 6 do
+				if currentzappsytable[i + pagegap].title:len() > 35 then
+					if selectioncode + pagegap == i + pagegap - (6 - selectioncode) then
+						scrollxmachen = scrollxmachen + 0.05
+					else 
+						scrollxmachen = 0
+					end
+					TextDraw.DrawText(currentzappsytable[i + pagegap].title .. "  " .. currentzappsytable[i + pagegap].points .. " Żappsów", 27 - scrollxmachen, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.6, true)
+				else
+					TextDraw.DrawText(currentzappsytable[i + pagegap].title .. "  " .. currentzappsytable[i + pagegap].points .. " Żappsów", 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.6, true)
+				end
+				tempzm = i
+			end
+		end
     end
 end
 local function extract_p_tags(html)
@@ -606,6 +639,7 @@ function limitchar(str)
 		return str
 	end
 end
+
 function parsedesc(text_to_parse)
 	local str = text_to_parse
 	
@@ -638,31 +672,33 @@ function draw_bottom_screen()
 			love.graphics.print('(nwm czas w 3dsach jakiś zjebany jest)', font, 0, 225, 0, 1.2, 1.2)
 		end
 		if state == "main_strona" then
-			TextDraw.DrawText("Moje Kupony:", 27, 40, {0.27,0.84,0.43, 1}, font, 1.9, true)	
-			if kurwalimit ~= 0 then
-				TextDraw.DrawText("->", 5, 50 + selectioncode * 20, {0.27,0.84,0.43, 1}, font, 1.9, true)
-				kurwalimit = #mojekupony.data.couponWallet.coupons
-				if kurwalimit < 6 then
-					for i = 1, kurwalimit do 
-						--print(mojekupony.data.couponWallet.coupons[i + pagegap].__typename)
-						if mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon ~= nil then
-							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
-						elseif mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon ~= nil then
-							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+			if intranet == "false" then
+				TextDraw.DrawText("Moje Kupony:", 27, 40, {0.27,0.84,0.43, 1}, font, 1.9, true)	
+				if kurwalimit ~= 0 then
+					TextDraw.DrawText("->", 5, 50 + selectioncode * 20, {0.27,0.84,0.43, 1}, font, 1.9, true)
+					kurwalimit = #mojekupony.data.couponWallet.coupons
+					if kurwalimit < 6 then
+						for i = 1, kurwalimit do 
+							--print(mojekupony.data.couponWallet.coupons[i + pagegap].__typename)
+							if mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon ~= nil then
+								TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+							elseif mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon ~= nil then
+								TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+							end
+							--print("Done")
 						end
-						--print("Done")
+					else 
+						for i = 1, 6 do
+							if mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon ~= nil then
+								TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+							elseif mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon ~= nil then
+								TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
+							end
+						end
 					end
 				else 
-					for i = 1, 6 do
-						if mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon ~= nil then
-							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].singleCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
-						elseif mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon ~= nil then
-							TextDraw.DrawText(mojekupony.data.couponWallet.coupons[i + pagegap].ployCoupon.targetPromotion.name, 27, 50 + 20 * i, {0.27,0.84,0.43, 1}, font, 1.9, true)
-						end
-					end
+					TextDraw.DrawText("Brak", 27, 70, {0.27,0.84,0.43, 1}, font, 1.9, true)	
 				end
-			else 
-				TextDraw.DrawText("Brak", 27, 70, {0.27,0.84,0.43, 1}, font, 1.9, true)	
 			end
 		elseif state == "promki_sel" or state == "promki" or state == "options" then
 			TextDraw.DrawText("Góra/Dół - Wybierz         A - Zatwierdź" , 20, 35, {0,0,0,1}, font, 1.5)
@@ -718,6 +754,29 @@ function exitenmachen()
 		category = false
 	end
 end
+function zappsmahcen()
+	if state == "historia" then
+		sfx2:play()
+		selectioncode = 1
+		pagegap = 0
+		jsonread = true
+		image = false
+		category = false
+		state = "main_strona"
+		
+	elseif state == "main_strona" then
+		sfx:play()
+		selectioncode = 1
+		pagegap = 0
+		update_zappsy_hst()
+		state = "historia" 
+		category = false
+		isScrolling = true
+		isFading = true
+		elapsedTime = 0  
+		elapsedTimeFade = 0
+	end
+end
 function kuponmachen()
 	if state == "promki_sel" then
 		sfx2:play()
@@ -744,7 +803,7 @@ function optenmachen()
 	if state == "main_strona" or state == "options" then
 		if state == "options" then
 			sfx2:play()
-			saveTableToFile(optiontable, "opcje.lua")
+			love.filesystem.write("opcje.json", json.encode(optiontable))
 			state = "main_strona"
 			isFading = false
 		elseif state == "main_strona" then
@@ -928,7 +987,7 @@ function love.gamepadpressed(joystick, button)
 			end
 		end
 	end
-	if state == "promki_sel" or state == "promki" or state == "category_sel" or state == "main_strona" then
+	if state == "promki_sel" or state == "promki" or state == "category_sel" or state == "main_strona" or state == "historia" then
 		if button == "dpup" then
 			if kurwalimit < 6 then
 				if selectioncode ~= 1 then
@@ -941,6 +1000,8 @@ function love.gamepadpressed(joystick, button)
 					pagegap = pagegap - 1
 				end
 			end
+			-- print(selectioncode + pagegap)
+			-- print(tempzm + pagegap - (6 - selectioncode))
 		end
 		if button == "dpdown" then
 			if kurwalimit < 6 then
@@ -954,7 +1015,10 @@ function love.gamepadpressed(joystick, button)
 					pagegap = pagegap + 1
 				end
 			end
+			-- print(selectioncode + pagegap)
+			-- print(tempzm + pagegap - (6 - selectioncode))
 		end
+		
 	end
 	-- if state == "promki" or state == "SSF" or state == "main_strona" then
 		-- if button == "dpdown" then
@@ -1034,6 +1098,7 @@ function alt_kalibracja()
 	love.filesystem.write("LastCzasIntranet.txt", os.time())
 	return dawajczas
 end
+
 function updatetime_withserver()
 	local data = ""
 	refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", data, {["api-version"] = "4.4", ["application-id"] = "%C5%BCappka", ["user-agent"] = "Synerise Android SDK 5.9.0 pl.zabka.apb2c", ["accept"] = "application/json", ["mobile-info"] = "horizon;28;AW700000000;9;CTR-001;nintendo;5.9.0", ["content-type"] = "application/json; charset=UTF-8", ["authorization"] = authtoken}, "GET")
@@ -1102,18 +1167,18 @@ function updatezappsy()
 	end
 end
 function update_ployzones()
-	local data = json.encode({operationName = "PloyZoneFeeds",variables = {},query = "query PloyZoneFeeds { ployZoneFeeds { zoneFeeds { id key icon { url } title } } }"})
-	local data = data:gsub('"variables":%[%]', '"variables":{}')
-	refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
-	local ployzabka = responded.data.ployZoneFeeds.zoneFeeds[1].id
-	local ploypartnerzy = responded.data.ployZoneFeeds.zoneFeeds[2].id
-	local data = json.encode({operationName = "ZoneFeed", query = "query ZoneFeed($zoneId: ID!, $after: String) { zoneFeed(zoneFeedId: $zoneId, after: $after) { sections { __typename ... on OfferTileSection { __typename ...OfferTileSectionParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on DealCarousel { __typename ...DealCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } } pagination { cursor } } }  fragment OfferTileSectionParts on OfferTileSection { id title tiles { id backgroundImage { url } offerTreeLevel { __typename ... on OfferCategory { id name } ... on PloyOfferListing { id title } ... on ProductPromotionListing { id title } } } }  fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title }  fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } }  fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } }  fragment CtaParts on Cta { title subtitle action { label link } id image { url } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename }  fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } }  fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotionListingRef { id } productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } }  fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore }  fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } }  fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }  fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } }  fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } }  fragment OptionTileParts on OptionTile { id label link }  fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } }  fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }", variables = { zoneId = ployzabka}})
+	-- local data = json.encode({operationName = "PloyZoneFeeds",variables = {},query = "query PloyZoneFeeds { ployZoneFeeds { zoneFeeds { id key icon { url } title } } }"})
+	--local data = data:gsub('"variables":%[%]', '"variables":{}')
+	--refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
+	--local ployzabka = responded.data.ployZoneFeeds.zoneFeeds[1].id
+	--local ploypartnerzy = responded.data.ployZoneFeeds.zoneFeeds[2].id
+	local data = json.encode({operationName = "ZoneFeedByKey", query = "query ZoneFeedByKey($zoneFeedKey: String!, $after: String) { zoneFeed(zoneFeedKey: $zoneFeedKey, after: $after) { sections { __typename ... on OfferTileSection { __typename ...OfferTileSectionParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on DealCarousel { __typename ...DealCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } ... on DealListingCarousel { __typename ...DealListingCarouselParts } } pagination { cursor } } }  fragment OfferTileSectionParts on OfferTileSection { id title tiles { id backgroundImage { url } offerTreeLevel { __typename ... on OfferCategory { id name } ... on PloyOfferListing { id title } ... on ProductPromotionListing { id title } } } }  fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title }  fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } }  fragment RelativeProductPromotionPriceLabelParts on RelativeProductPromotionPriceLabel { percentage roundOff textColor { __typename ...ColorParts } }  fragment AbsoluteProductPromotionPriceLabelParts on AbsoluteProductPromotionPriceLabel { price { __typename ...PriceParts } roundOff textColor { __typename ...ColorParts } }  fragment LargeProductPromotionListingBannerPropertiesParts on LargeProductPromotionListingBannerProperties { image { url } }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment LargePloyOfferBannerPropertiesParts on LargePloyOfferBannerProperties { image { url } }  fragment MediumPloyOfferBannerPropertiesParts on MediumPloyOfferBannerProperties { image { url } }  fragment PloyOfferPriceLabelParts on PloyOfferPriceLabel { ployPrice roundOff textColor { __typename ...ColorParts } }  fragment CtaParts on Cta { title subtitle action { label link } id image { url } __typename }  fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } }  fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename }  fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } }  fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on ProductPromotionListingBanner { id header title validFrom validUntil exclusivity priceLabel { __typename ... on RelativeProductPromotionPriceLabel { __typename ...RelativeProductPromotionPriceLabelParts } ... on AbsoluteProductPromotionPriceLabel { __typename ...AbsoluteProductPromotionPriceLabelParts } } listingRef: productPromotionListingRef { id } properties { __typename ... on LargeProductPromotionListingBannerProperties { __typename ...LargeProductPromotionListingBannerPropertiesParts } } } ... on PloyOfferBanner { id ployOffer { __typename ...PloyOfferParts id } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } ... on MediumPloyOfferBannerProperties { __typename ...MediumPloyOfferBannerPropertiesParts } } } ... on PloyOfferListingBanner { id header title validFrom validUntil exclusivity ployOfferListingRef { id } priceLabel { __typename ...PloyOfferPriceLabelParts } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } }  fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore }  fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } }  fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }  fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } }  fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } }  fragment OptionTileParts on OptionTile { id label link }  fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } }  fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }  fragment DealListingCarouselParts on DealListingCarousel { id dealListing { id title deals { __typename ...DealParts id } } properties { __typename ...ScrollCarouselPropertiesParts } }", variables = { zoneFeedKey = "ploy-zabka"}})
 	refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
 	zabkazonefeed = responded
 	if zabkazonefeed ~= nil then
 		print("updated ployzones!")
 	end
-	local data = json.encode({operationName = "ZoneFeed", query = "query ZoneFeed($zoneId: ID!, $after: String) { zoneFeed(zoneFeedId: $zoneId, after: $after) { sections { __typename ... on OfferTileSection { __typename ...OfferTileSectionParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on DealCarousel { __typename ...DealCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } } pagination { cursor } } }  fragment OfferTileSectionParts on OfferTileSection { id title tiles { id backgroundImage { url } offerTreeLevel { __typename ... on OfferCategory { id name } ... on PloyOfferListing { id title } ... on ProductPromotionListing { id title } } } }  fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title }  fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } }  fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } }  fragment CtaParts on Cta { title subtitle action { label link } id image { url } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename }  fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } }  fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotionListingRef { id } productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } }  fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore }  fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } }  fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }  fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } }  fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } }  fragment OptionTileParts on OptionTile { id label link }  fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } }  fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }", variables = { zoneId = ploypartnerzy}})
+	local data = json.encode({operationName = "ZoneFeedByKey", query = "query ZoneFeed($zoneId: ID!, $after: String) { zoneFeed(zoneFeedId: $zoneId, after: $after) { sections { __typename ... on OfferTileSection { __typename ...OfferTileSectionParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on DealCarousel { __typename ...DealCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } } pagination { cursor } } }  fragment OfferTileSectionParts on OfferTileSection { id title tiles { id backgroundImage { url } offerTreeLevel { __typename ... on OfferCategory { id name } ... on PloyOfferListing { id title } ... on ProductPromotionListing { id title } } } }  fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title }  fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } }  fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } }  fragment CtaParts on Cta { title subtitle action { label link } id image { url } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename }  fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } }  fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotionListingRef { id } productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } }  fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore }  fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } }  fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }  fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } }  fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } }  fragment OptionTileParts on OptionTile { id label link }  fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } }  fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }", variables = { zoneId = ploypartnerzy}})
 	refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
 	patrnerzonefeed = responded
 end
@@ -1130,6 +1195,27 @@ function promka_more()
 			end
 		until string.find(body, '"cursor":null')
 	end
+end
+function zappsy_more()
+	if not string.find(body, '"cursor":null') then
+		repeat 
+			if not string.find(body, '"pagination":null}}],"pagination":{"cursor":null}')then
+				local data = json.encode({operationName = "LoyaltyPointsHistory", query = "query LoyaltyPointsHistory($cursor: String) { loyaltyPointsHistory(after: $cursor) { changes { change happenedAt id points title subtitle } pagination { cursor } } }", variables = {cursor = responded.data.loyaltyPointsHistory.pagination.cursor}})
+				refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
+				--table.insert(currentpromkitable, responded.data.ployOfferListing.ployOffers)
+				for i, entry in ipairs(responded.data.loyaltyPointsHistory.changes) do
+				  table.insert(currentzappsytable, entry)
+				end
+			end
+		until string.find(body, '"cursor":null')
+	end
+end
+function update_zappsy_hst()
+	local data = json.encode({operationName = "LoyaltyPointsHistory", query = "query LoyaltyPointsHistory($cursor: String) { loyaltyPointsHistory(after: $cursor) { changes { change happenedAt id points title subtitle } pagination { cursor } } }", variables = {}})
+	local data = data:gsub('"variables":%[%]', '"variables":{}')
+	refresh_data("https://api.spapp.zabka.pl/", data, {["user-agent"] = "Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28", ["accept"] = "application/json", ["content-type"] = "application/json", ["authorization"] = "Bearer " .. authtoken}, "POST")
+	currentzappsytable = responded.data.loyaltyPointsHistory.changes
+	zappsy_more()
 end
 function updatepromki()
 	if state == "category_sel" then
@@ -1187,7 +1273,7 @@ function tel_login()
 	if love._potion_version == nil then
 		if gui_design_mode == false then
 			handle_authflow()
-			numertel = "numertutaj"
+			numertel = "660222062"
 			sendvercode(numertel)
 			test()
 		end
