@@ -1,0 +1,4 @@
+--atlas -f rgba8888 -z auto
+themename_border.png
+change_theme.png
+

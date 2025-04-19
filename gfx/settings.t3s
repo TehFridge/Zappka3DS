@@ -1,0 +1,3 @@
+--atlas -f rgba8888 -z auto
+settings_normal.png
+settings_pressed.png
