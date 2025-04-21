@@ -93,6 +93,29 @@ struct memory {
 // Enumeration for different scenes
 
 // Structure to hold button properties
+void createDirectory(const char* dirPath) {
+    // Initialize FS_Path
+    FS_Path fsPath = fsMakePath(PATH_ASCII, dirPath);
+
+    // Open SDMC archive
+    FS_Archive sdmcArchive;
+    Result rc = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
+    if (R_FAILED(rc)) {
+        printf("Failed to open SDMC archive: 0x%08lX\n", rc);
+        return;
+    }
+
+    // Create the directory
+    rc = FSUSER_CreateDirectory(sdmcArchive, fsPath, 0);
+    if (R_FAILED(rc)) {
+        printf("Failed to create directory '%s': 0x%08lX\n", dirPath, rc);
+    } else {
+        printf("Directory '%s' created successfully.\n", dirPath);
+    }
+
+    // Close the archive
+    FSUSER_CloseArchive(sdmcArchive);
+}
 
 void drawShadowedText(C2D_Text* text, float x, float y, float depth, float scaleX, float scaleY, u32 color, u32 shadowColor) {
     static const float shadowOffsets[4][2] = {
@@ -579,7 +602,7 @@ void kodQR() {
 	
 }
 void wyloguj() {
-	remove("data.json");
+	remove("/3ds/data.json");
 	przycskmachen = false;
 	timer = 0.0f;
     Scene = 17;
@@ -642,10 +665,10 @@ int main(int argc, char* argv[]) {
 	C2D_TextBuf memBuf = C2D_TextBufNew(128);  // Allocate once
 	C2D_Text memtext;
 	start_request_thread();
-	if (access("data.json", F_OK) == 0) {
+	if (access("/3ds/data.json", F_OK) == 0) {
 		isLogged = true;
 		
-	    jsonfl = json_load_file("data.json", 0, NULL);
+	    jsonfl = json_load_file("/3ds/data.json", 0, NULL);
 		json_t *tempajd = json_object_get(jsonfl, "user_id");
 		json_t *nwmsecret = json_object_get(jsonfl, "hex_secret");
 		json_t *nejmen = json_object_get(jsonfl, "name");
@@ -684,7 +707,7 @@ int main(int argc, char* argv[]) {
     C3D_RenderTarget* top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
-	printf(response);
+	//printf(response);
  
 	static SwkbdState swkbd;
 	static char mybuf[60];
@@ -709,17 +732,26 @@ int main(int argc, char* argv[]) {
 	int maxThemes;
 	u32 themeoutColor;
 	u32 themeBaseColor;
-	json_t *rootenmach = json_load_file("zappkathemes/current_theme.json", 0, NULL);
-	json_t *currentthemene = json_object_get(rootenmach, "currenttheme");
-	currenttheme = json_integer_value(currentthemene);
-	selectionthemelol = json_integer_value(currentthemene);
+	if (access("/3ds/zappkathemes/current_theme.json", F_OK) == 0) {
+		json_t *rootenmach = json_load_file("/3ds/zappkathemes/current_theme.json", 0, NULL);
+		json_t *currentthemene = json_object_get(rootenmach, "currenttheme");
+		currenttheme = json_integer_value(currentthemene);
+		selectionthemelol = json_integer_value(currentthemene);
+	} else {
+		createDirectory("/3ds/zappkathemes/");
+		FILE *stworzplkplz = fopen("/3ds/zappkathemes/current_theme.json", "w");
+		fprintf(stworzplkplz, "{\"currenttheme\":0}");
+		currenttheme = 0;
+		selectionthemelol = 0;
+		fclose(stworzplkplz);	
+	}
 	if (currenttheme == 0){
 		themeon = false;
 	} else {
 		themeon = true;
 	}
-	if (access("zappkathemes/themelst.json", F_OK) == 0) {
-		jsonfl = json_load_file("zappkathemes/themelst.json", 0, NULL);
+	if (access("/3ds/zappkathemes/themelst.json", F_OK) == 0) {
+		jsonfl = json_load_file("/3ds/zappkathemes/themelst.json", 0, NULL);
 		json_t *themesy = json_object_get(jsonfl, "themes");
 		size_t index;
 		json_t *value;
@@ -735,7 +767,7 @@ int main(int argc, char* argv[]) {
 		maxThemes = index;	
 		if (currenttheme != 0) {
 			char path[128];
-			snprintf(path, sizeof(path), "zappkathemes/%s/colors.json", themes[currenttheme]);
+			snprintf(path, sizeof(path), "/3ds/zappkathemes/%s/colors.json", themes[currenttheme]);
 			json_t *root = json_load_file(path, 0, NULL);
 			json_t *color = json_object_get(root, "outlinecolor");
 			json_t *color2 = json_object_get(root, "basecolor");
@@ -807,7 +839,7 @@ int main(int argc, char* argv[]) {
 		char fullpath[256];
 
 		#define LOAD_SPRITE(var, filename) \
-			snprintf(fullpath, sizeof(fullpath), "zappkathemes/%s/%s", path, filename); \
+			snprintf(fullpath, sizeof(fullpath), "/3ds/zappkathemes/%s/%s", path, filename); \
 			var = C2D_SpriteSheetLoad(fullpath);
 
 		LOAD_SPRITE(background_top, "bg.t3x");
@@ -1116,9 +1148,9 @@ int main(int argc, char* argv[]) {
                 endY = -400.0f;   
                 elapsed = 0;
 				Scene = 17;
-				json_t *rootenmach = json_load_file("zappkathemes/current_theme.json", 0, NULL);
+				json_t *rootenmach = json_load_file("/3ds/zappkathemes/current_theme.json", 0, NULL);
 				json_object_set_new(rootenmach, "currenttheme", json_integer(selectionthemelol));
-				json_dump_file(rootenmach, "zappkathemes/current_theme.json", JSON_INDENT(4));
+				json_dump_file(rootenmach, "/3ds/zappkathemes/current_theme.json", JSON_INDENT(4));
             }
         }
 		if (kDown & KEY_DLEFT) {
@@ -1697,7 +1729,7 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, 6.5f); 
 						buttonsy[0].x = currentY;
 						buttonsy[1].x = currentY; 
 						buttonsy[2].x = -currentY + 140; 
@@ -1705,7 +1737,7 @@ int main(int argc, char* argv[]) {
 						
 					}
 					if (timer > 120) {
-						currentY = easeOutQuad(elapsed, startY, endY, duration);
+						currentY = easeOutQuad(elapsed, startY, endY, 7.0f);
 						// buttonsy[0].x = currentY;
 						// buttonsy[1].x = currentY; 
 						// buttonsy[2].x = -currentY + 140; 
@@ -2632,7 +2664,7 @@ int main(int argc, char* argv[]) {
 				timer = 80;
 				timer2 = 0;
 				elapsed = 0;
-				if (access("data.json", F_OK) == 0) {
+				if (access("/3ds/data.json", F_OK) == 0) {
 					Scene = 5;
 				} else {
 					Scene = 1;

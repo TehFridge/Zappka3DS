@@ -48,7 +48,7 @@ PRODUCT_CODE		:= ZAPP3DS
 UNIQUE_ID			:= 0xEC900
 
 BANNER_AUDIO		:= meta/banner.wav
-BANNER_IMAGE		:= meta/banner.png
+BANNER_IMAGE		:= meta/banner.cgfx
 ICON				:= meta/icon.png
 RSF_PATH			:= meta/zappka.rsf
 

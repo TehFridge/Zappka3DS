@@ -888,6 +888,7 @@ void process_ofertamachen() {
     headers = curl_slist_append(headers, "Accept: application/json");
 	log_to_file("Raw JSON dump:\n%s", json_datan);
 	queue_request("https://api.szprink.xyz/t3x/convert", json_datan, headers, (void **)&local_response, &response_size, &response_event, true);
+	free(json_datan);
 }
 void process_ployoffers() {
     C2D_TextBufClear(kupon_text_Buf);
@@ -1095,10 +1096,10 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 
                 // Save tokens to file
                 json_decref(response_root);
-                json_t *fajlroot = json_load_file("data.json", 0, NULL);
+                json_t *fajlroot = json_load_file("/3ds/data.json", 0, NULL);
                 json_object_set_new(fajlroot, "token", json_string(id_tokenk));
                 json_object_set_new(fajlroot, "refresh", json_string(refreshtoken));
-                json_dump_file(fajlroot, "data.json", JSON_COMPACT);
+                json_dump_file(fajlroot, "/3ds/data.json", JSON_COMPACT);
                 json_decref(fajlroot);
             }
         }
@@ -1278,12 +1279,12 @@ void login_flow(const char *phone_number, const char *verification_code) {
     json_decref(root);
 	json_decref(response_root);
 	fclose(fptr);
-	FILE *log_file = fopen("data.json", "w");
+	FILE *log_file = fopen("/3ds/data.json", "w");
 	fprintf(log_file, save_data);
 	fclose(log_file);
 	json_decref(saveroot);
 	json_t *jsonfl;
-	jsonfl = json_load_file("data.json", 0, NULL);
+	jsonfl = json_load_file("/3ds/data.json", 0, NULL);
 	json_t *ajdentokenen = json_object_get(jsonfl, "token");
 	id_tokenk = json_string_value(ajdentokenen);
 	json_t *nejmen = json_object_get(jsonfl, "name");

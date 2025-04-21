@@ -3,6 +3,8 @@
 
 static Request request_queue[MAX_QUEUE];
 static int request_count = 0;
+static char *sprite_memory = NULL;
+static size_t sprite_memory_size = 0;
 static LightLock request_lock;
 static bool request_running = true;  // Renamed variable
 static Thread request_thread;
@@ -106,33 +108,37 @@ void log_request_to_file(const char *url, const char *data, struct curl_slist *h
         printf("Failed to open log file for writing.\n");
     }
 }
-void load_image() {
-    if (kuponobraz) {
-        C2D_SpriteSheetFree(kuponobraz);
-        kuponobraz = NULL;
+void load_image(void) {
+    // Allocate fresh memory for this image
+    char *img_data = malloc(global_response.size);
+    if (!img_data) {
+        log_to_file("Failed to malloc %lu bytes for image", global_response.size);
+        return;
     }
-	LightLock_Lock(&global_response_lock);
-	char *img_data = malloc(global_response.size);
-	if (img_data) {
-		memcpy(img_data, global_response.data, global_response.size);
-		kuponobraz = C2D_SpriteSheetLoadFromMem(img_data, global_response.size);
-		free(img_data);  // You can safely free it after if the library copies internally
-	}
-	LightLock_Unlock(&global_response_lock);
-	if (kuponobraz == NULL) {
-		log_to_file("Error loading sprite sheet from memory!\n");
-	} else {
-		log_to_file("Sprite sheet loaded successfully!\n");
-	}
-	kuponkurwa = C2D_SpriteSheetGetImage(kuponobraz, 0);
-	obrazekdone = true;
-	// if (!&kuponkurwa) {
-		// log_to_file("[ERROR] Failed to decode image data\n");
-	// } else {
-		// log_to_file("[DEBUG] Decoded image at %p\n", &kuponkurwa);
-	// }
-	//safe_free_global_response();
+    memcpy(img_data, global_response.data, global_response.size);
+
+    // Free old sprite memory only AFTER sprite is fully replaced
+    if (sprite_memory) {
+        free(sprite_memory);
+        sprite_memory = NULL;
+        sprite_memory_size = 0;
+    }
+
+    // Store pointer globally so we can free it later
+    sprite_memory = img_data;
+    sprite_memory_size = global_response.size;
+
+    // Now pass it to Citro2D — DO NOT FREE img_data after this
+    kuponobraz = C2D_SpriteSheetLoadFromMem(img_data, global_response.size);
+    if (!kuponobraz) {
+        log_to_file("Sprite load failed. Data at %p, size %lu", img_data, global_response.size);
+    } else {
+        log_to_file("Sprite load success. Data at %p, size %lu", img_data, global_response.size);
+		kuponkurwa = C2D_SpriteSheetGetImage(kuponobraz, 0);
+		obrazekdone = true;
+    }
 }
+
 void print_headers(struct curl_slist *headers) {
     struct curl_slist *current = headers;
     while (current) {
@@ -307,23 +313,15 @@ void queue_request(const char *url, const char *data, struct curl_slist *headers
     strncpy(req->url, url, sizeof(req->url) - 1);
     req->url[sizeof(req->url) - 1] = '\0';
 
-    if (data) {
-        if (is_binary) {
-            req->data = strdup(data);
-            if (!req->data) {
-                LightLock_Unlock(&request_lock);
-                return;
-            }
-            memcpy(req->data, data, *response_size);
-        } else {
-            req->data = strdup(data);
-            if (!req->data) {
-                LightLock_Unlock(&request_lock);
-                return;
-            }
-        }
-        req->owns_data = true; 
-    }
+	if (data) {
+		req->data = strdup(data);
+		if (!req->data) {
+			LightLock_Unlock(&request_lock);
+			return;
+		}
+		req->owns_data = true;
+	}
+
 
 
     req->headers = headers;
