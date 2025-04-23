@@ -14,6 +14,7 @@
 #define LOG_FILE "curl_log.txt"
 extern bool offermachen;
 extern bool categoryornah;
+extern bool canredeem;
 extern char *ploy_iden;
 extern char ploy_iden_2[25];
 extern bool activated;
@@ -34,6 +35,7 @@ void process_category();
 void aktywujkurwe();
 void process_ofertamachen();
 void process_ployoffers();
+void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen);
 void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen);
 void updateploy(const char* mejntoken, const char* refrenentokenenkurwen);
 void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen); 

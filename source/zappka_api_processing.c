@@ -15,6 +15,7 @@ const char *refreshtoken = NULL;
 extern int selectioncodelol;
 char zappsystr[64];
 bool canredeem = false;
+extern long response_code;
 bool ofertanow = false;
 bool przycskmachen = false;
 extern bool loadingshit;
@@ -833,7 +834,8 @@ void process_ofertamachen() {
 	json_t *price = json_object_get(ployOffer2, "price");
 	json_t *zappsyvalue = json_object_get(price, "base");
 	int cena = json_integer_value(zappsyvalue);
-	int cenamoja = (int)zappsystr;
+	int cenamoja = atoi(zappsystr);
+	log_to_file("mojeżapps: %d",cenamoja);
 	if (cena <= cenamoja) {
 		canredeem = true;
 	} else {
@@ -961,6 +963,62 @@ void process_ployoffers() {
 	loadingshit = false;
 	json_done = true;
 }
+void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen) {
+    // Build the JSON payload.
+    json_t *rootn = json_object();
+    json_t *variablesn = json_object();
+    
+    json_object_set_new(rootn, "operationName", json_string("LoyaltyPoints"));
+    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
+    json_object_set_new(rootn, "variables", variablesn);
+
+    // Dump the JSON into a compact string.
+    char *json_datan = json_dumps(rootn, JSON_COMPACT);
+    json_decref(rootn); // Decrement reference count for rootn
+
+    // Setup the headers.
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
+    headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
+    headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
+    headers = curl_slist_append(headers, "Accept: application/json");
+
+    char auth_headeren[1024];
+    snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
+    headers = curl_slist_append(headers, auth_headeren);
+
+    // Initialize a LightEvent for this request.
+    LightEvent response_event;
+    LightEvent_Init(&response_event, RESET_ONESHOT);
+
+    refresh_data("https://api.spapp.zabka.pl/", json_datan, headers);
+	json_t *response_root = json_loads(global_response.data, 0, NULL);
+	if (response_root) {
+		json_t *data = json_object_get(response_root, "data");
+		if (data) {
+			json_t *loyalty = json_object_get(data, "loyaltyProgram");
+			if (loyalty) {
+				json_t *punkty = json_object_get(loyalty, "points");
+				if (punkty) {
+					int amountzappsy = json_integer_value(punkty);
+					sprintf(zappsystr, "%d", amountzappsy);
+					log_to_file("Points: %d", amountzappsy);
+				} else {
+					log_to_file("ERROR: 'points' not found in the loyaltyProgram.");
+				}
+			} else {
+				log_to_file("ERROR: 'loyaltyProgram' not found in the data.");
+			}
+		} else {
+			log_to_file("ERROR: 'data' not found in the response.");
+		}
+
+		json_decref(response_root);
+	} else {
+		log_to_file("ERROR: Failed to parse JSON response.");
+	}
+}
 void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen) {
     // Build the JSON payload.
     json_t *rootn = json_object();
@@ -1070,44 +1128,48 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
     json_object_clear(rootn);  // Clear JSON object
 
     // Use the global global_response to load the response JSON
-    if (strstr(global_response.data, "points") == NULL) {
-        // Token refresh logic if "points" is not found
-        json_object_set_new(rootn, "grantType", json_string("refresh_token"));
-        json_object_set_new(rootn, "refreshToken", json_string(refrenentokenenkurwen));
-        json_datan = json_dumps(rootn, JSON_COMPACT);  // Create new JSON data
+	if (response_code != 0){
+		if (strstr(global_response.data, "points") == NULL) {
+			// Token refresh logic if "points" is not found
+			json_object_set_new(rootn, "grantType", json_string("refresh_token"));
+			json_object_set_new(rootn, "refreshToken", json_string(refrenentokenenkurwen));
+			json_datan = json_dumps(rootn, JSON_COMPACT);  // Create new JSON data
 
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        // Second API call to refresh token
-        refresh_data("https://securetoken.googleapis.com/v1/token?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_datan, headers);
+			headers = curl_slist_append(headers, "Content-Type: application/json");
+			// Second API call to refresh token
+			refresh_data("https://securetoken.googleapis.com/v1/token?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_datan, headers);
 
-        // Free previous data before reusing it
-        free(json_datan);
+			// Free previous data before reusing it
+			free(json_datan);
 
-        json_object_clear(rootn);
+			json_object_clear(rootn);
 
-        // Use the global global_response to load the response JSON for refresh token
-        if (global_response.data) {
-            json_t *response_root = json_loads(global_response.data, 0, NULL);
-            if (response_root) {
-                json_t *refresh_tokent = json_object_get(response_root, "refresh_token");
-                json_t *access_tokent = json_object_get(response_root, "access_token");
-                id_tokenk = strdup(json_string_value(access_tokent));
-                refreshtoken = strdup(json_string_value(refresh_tokent));
+			// Use the global global_response to load the response JSON for refresh token
+			if (global_response.data) {
+				json_t *response_root = json_loads(global_response.data, 0, NULL);
+				if (response_root) {
+					json_t *refresh_tokent = json_object_get(response_root, "refresh_token");
+					json_t *access_tokent = json_object_get(response_root, "access_token");
+					id_tokenk = strdup(json_string_value(access_tokent));
+					refreshtoken = strdup(json_string_value(refresh_tokent));
 
-                // Save tokens to file
-                json_decref(response_root);
-                json_t *fajlroot = json_load_file("/3ds/data.json", 0, NULL);
-                json_object_set_new(fajlroot, "token", json_string(id_tokenk));
-                json_object_set_new(fajlroot, "refresh", json_string(refreshtoken));
-                json_dump_file(fajlroot, "/3ds/data.json", JSON_COMPACT);
-                json_decref(fajlroot);
-            }
-        }
+					// Save tokens to file
+					json_decref(response_root);
+					json_t *fajlroot = json_load_file("/3ds/data.json", 0, NULL);
+					json_object_set_new(fajlroot, "token", json_string(id_tokenk));
+					json_object_set_new(fajlroot, "refresh", json_string(refreshtoken));
+					json_dump_file(fajlroot, "/3ds/data.json", JSON_COMPACT);
+					json_decref(fajlroot);
+				}
+			}
 
-        // Free and reset headers
-        curl_slist_free_all(headers);
-        headers = NULL;
-    }
+			// Free and reset headers
+			curl_slist_free_all(headers);
+			headers = NULL;
+		} else {
+			getzappsy_startup(id_tokenk, refreshtoken);
+		}
+	}
 }
 
 void login_flow(const char *phone_number, const char *verification_code) {

@@ -35,7 +35,7 @@
 size_t totalsajz = 0;
 
 bool mem_debug = false;
-bool citra_machen = true;
+bool citra_machen = false;
 //char *// global_response = NULL;
 uint8_t* obrazek = NULL;
 char *zabkazonefeed = NULL;
@@ -181,7 +181,7 @@ C2D_TextBuf themeBuf;
 C2D_Text themeText[100];
 extern C2D_Text g_kuponText[100];
 C2D_Font font[1];
-static C2D_SpriteSheet background_top, background_down, logo, buttons, settings, scan, points, coupons, qrframe, stat, zappbar, couponenbuttonen, goback, act_buttons, deact_buttons, more_b, logout_buttons, themename_border;
+static C2D_SpriteSheet background_top, background_down, logo, buttons, settings, scan, points, coupons, qrframe, stat, zappbar, couponenbuttonen, goback, act_buttons, deact_buttons, more_b, logout_buttons, themename_border, too_less;
 C2D_Image bgtop, bgdown, logo3ds, buttonsmol, buttonmed, buttonbeeg;
 C2D_Image scan_button, scan_pressed, coupons_button, coupons_pressed;
 C2D_Image points_button, points_pressed, settings_button, settings_pressed;
@@ -191,7 +191,7 @@ C2D_Image gobackplz;
 C2D_Image act_button, act_pressed;
 C2D_Image deact_button, deact_pressed;
 C2D_Image logout_button, logout_pressed;
-C2D_Image more_button, themeborder, ch_theme;
+C2D_Image more_button, themeborder, ch_theme, za_malo;
 
 static Sprite sprites[MAX_SPRITES];
 static size_t numSprites = MAX_SPRITES / 2;
@@ -792,6 +792,7 @@ int main(int argc, char* argv[]) {
 		logo = C2D_SpriteSheetLoad("romfs:/gfx/logo.t3x");
 		// dawaj button'y
 		points = C2D_SpriteSheetLoad("romfs:/gfx/points.t3x");
+		too_less = C2D_SpriteSheetLoad("romfs:/gfx/za_malo.t3x");
 		scan = C2D_SpriteSheetLoad("romfs:/gfx/scan.t3x");
 		coupons = C2D_SpriteSheetLoad("romfs:/gfx/coupons.t3x");
 		settings = C2D_SpriteSheetLoad("romfs:/gfx/settings.t3x");
@@ -813,6 +814,7 @@ int main(int argc, char* argv[]) {
 		scan_pressed = C2D_SpriteSheetGetImage(scan, 1);
 		coupons_button = C2D_SpriteSheetGetImage(coupons, 0); 
 		coupons_pressed = C2D_SpriteSheetGetImage(coupons, 1);
+		za_malo = C2D_SpriteSheetGetImage(too_less, 0); 
 		points_button = C2D_SpriteSheetGetImage(points, 0); 
 		points_pressed = C2D_SpriteSheetGetImage(points, 1);
 		settings_button = C2D_SpriteSheetGetImage(settings, 0); 
@@ -845,6 +847,7 @@ int main(int argc, char* argv[]) {
 		LOAD_SPRITE(background_top, "bg.t3x");
 		LOAD_SPRITE(background_down, "bottombg.t3x");
 		LOAD_SPRITE(logo, "logo.t3x");
+		LOAD_SPRITE(too_less, "za_malo.t3x");
 		LOAD_SPRITE(points, "points.t3x");
 		LOAD_SPRITE(scan, "scan.t3x");
 		LOAD_SPRITE(coupons, "coupons.t3x");
@@ -868,6 +871,7 @@ int main(int argc, char* argv[]) {
 		scan_pressed = C2D_SpriteSheetGetImage(scan, 1);
 		coupons_button = C2D_SpriteSheetGetImage(coupons, 0); 
 		coupons_pressed = C2D_SpriteSheetGetImage(coupons, 1);
+		za_malo = C2D_SpriteSheetGetImage(too_less, 0); 
 		points_button = C2D_SpriteSheetGetImage(points, 0); 
 		points_pressed = C2D_SpriteSheetGetImage(points, 1);
 		settings_button = C2D_SpriteSheetGetImage(settings, 0); 
@@ -2237,6 +2241,9 @@ int main(int argc, char* argv[]) {
 							drawShadowedTextWrapped(&g_kuponText[0], textX, textY, 0.5f, 0.6f, 0.6f, themeBaseColor, themeoutColor);
 							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
 						}
+						if (!canredeem) {
+							 C2D_DrawImageAt(za_malo, 40.0f, -currentY + 140, 0.0f, NULL, 1.0f, 1.0f);
+						}
 						if (aktywacja_done) {
 							if (!themeon){
 								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 100.0f, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
@@ -2447,6 +2454,9 @@ int main(int argc, char* argv[]) {
 						} else {
 							drawShadowedTextWrapped(&g_kuponText[0], textX, textY, 0.5f, 0.6f, 0.6f, themeBaseColor, themeoutColor);
 							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
+						}
+						if (!canredeem) {
+							 C2D_DrawImageAt(za_malo, 40.0f, -currentY + 140, 0.0f, NULL, 1.0f, 1.0f);
 						}
 						if (aktywacja_done) {
 							if (!themeon){
