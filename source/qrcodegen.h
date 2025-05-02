@@ -55,12 +55,10 @@ extern "C" {
  * The error correction level in a QR Code symbol.
  */
 enum qrcodegen_Ecc {
-	// Must be declared in ascending order of error protection
-	// so that an internal qrcodegen function works properly
-	qrcodegen_Ecc_LOW = 0 ,  // The QR Code can tolerate about  7% erroneous codewords
-	qrcodegen_Ecc_MEDIUM  ,  // The QR Code can tolerate about 15% erroneous codewords
-	qrcodegen_Ecc_QUARTILE,  // The QR Code can tolerate about 25% erroneous codewords
-	qrcodegen_Ecc_HIGH    ,  // The QR Code can tolerate about 30% erroneous codewords
+	qrcodegen_Ecc_LOW = 0 ,
+	qrcodegen_Ecc_MEDIUM  ,
+	qrcodegen_Ecc_QUARTILE,
+	qrcodegen_Ecc_HIGH    ,
 };
 
 
@@ -68,10 +66,7 @@ enum qrcodegen_Ecc {
  * The mask pattern used in a QR Code symbol.
  */
 enum qrcodegen_Mask {
-	// A special value to tell the QR Code encoder to
-	// automatically select an appropriate mask pattern
 	qrcodegen_Mask_AUTO = -1,
-	// The eight actual mask patterns
 	qrcodegen_Mask_0 = 0,
 	qrcodegen_Mask_1,
 	qrcodegen_Mask_2,
@@ -107,21 +102,9 @@ enum qrcodegen_Mode {
  * the largest QR Code (version 40) has 31329 modules.
  */
 struct qrcodegen_Segment {
-	// The mode indicator of this segment.
 	enum qrcodegen_Mode mode;
-	
-	// The length of this segment's unencoded data. Measured in characters for
-	// numeric/alphanumeric/kanji mode, bytes for byte mode, and 0 for ECI mode.
-	// Always zero or positive. Not the same as the data's bit length.
 	int numChars;
-	
-	// The data bits of this segment, packed in bitwise big endian.
-	// Can be null if the bit length is zero.
 	uint8_t *data;
-	
-	// The number of valid data bits used in the buffer. Requires
-	// 0 <= bitLength <= 32767, and bitLength <= (capacity of data array) * 8.
-	// The character count (numChars) must agree with the mode and the bit buffer length.
 	int bitLength;
 };
 
@@ -129,18 +112,9 @@ struct qrcodegen_Segment {
 
 /*---- Macro constants and functions ----*/
 
-#define qrcodegen_VERSION_MIN   1  // The minimum version number supported in the QR Code Model 2 standard
-#define qrcodegen_VERSION_MAX  40  // The maximum version number supported in the QR Code Model 2 standard
-
-// Calculates the number of bytes needed to store any QR Code up to and including the given version number,
-// as a compile-time constant. For example, 'uint8_t buffer[qrcodegen_BUFFER_LEN_FOR_VERSION(25)];'
-// can store any single QR Code from version 1 to 25 (inclusive). The result fits in an int (or int16).
-// Requires qrcodegen_VERSION_MIN <= n <= qrcodegen_VERSION_MAX.
+#define qrcodegen_VERSION_MIN   1
+#define qrcodegen_VERSION_MAX  40
 #define qrcodegen_BUFFER_LEN_FOR_VERSION(n)  ((((n) * 4 + 17) * ((n) * 4 + 17) + 7) / 8 + 1)
-
-// The worst-case number of bytes needed to store one QR Code, up to and including
-// version 40. This value equals 3918, which is just under 4 kilobytes.
-// Use this more convenient value to avoid calculating tighter memory bounds for buffers.
 #define qrcodegen_BUFFER_LEN_MAX  qrcodegen_BUFFER_LEN_FOR_VERSION(qrcodegen_VERSION_MAX)
 
 

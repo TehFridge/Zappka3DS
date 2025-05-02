@@ -15,6 +15,7 @@
 extern bool offermachen;
 extern bool categoryornah;
 extern bool canredeem;
+extern const char *usernan;
 extern char *ploy_iden;
 extern char ploy_iden_2[25];
 extern bool activated;
@@ -40,4 +41,4 @@ void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen);
 void updateploy(const char* mejntoken, const char* refrenentokenenkurwen);
 void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen); 
 void login_flow(const char *phone_number, const char *verification_code);
-#endif // ZAPPKA_API_PROCESSING_H
+#endif

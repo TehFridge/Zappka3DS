@@ -7,7 +7,7 @@
 #include <3ds.h>
 #include <stdarg.h>
 #include "logs.h"
-#include <curl/curl.h> //curlkurwa
+#include <curl/curl.h>
 extern C2D_SpriteSheet kuponobraz;
 extern C2D_Image kuponkurwa;
 extern bool obrazekdone;
@@ -35,9 +35,6 @@ typedef struct {
 extern ResponseBuffer global_response;
 
 size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata);
-
-
-// Call this function to free memory when done
 void free_global_response();
 void init_global_response();
 void log_message(const char *format, ...);
@@ -51,4 +48,4 @@ void queue_request(const char *url, const char *data, struct curl_slist *headers
 void start_request_thread();
 void stop_request_thread();
 
-#endif // REQUEST_H
+#endif

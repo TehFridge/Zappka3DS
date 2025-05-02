@@ -10,10 +10,9 @@ typedef struct {
     C3D_Tex *buff;
     C3D_Tex *backbuff;
 } QRTex;
-extern QRTex qr;          // Declare the variable (do not define it)
-extern C2D_Image qrImage; // Declare the variable (do not define it)
+extern QRTex qr;
+extern C2D_Image qrImage;
 void qr_swap_buf(QRTex *qr);
-// Function declarations
 void hmac_sha1(const unsigned char *key, size_t key_len, const unsigned char *message, size_t message_len, unsigned char *output);
 uint32_t ctotp(const uint8_t *arr, size_t index);
 int compute_magic_number(const char *secretHex);
@@ -23,4 +22,4 @@ void createQrImage(const uint8_t qrcode[], QRTex *qr, C2D_Image *img);
 void printQr(const uint8_t qrcode[]);
 bool doBasicDemo(C2D_Image* qrImage, int totp, const char* usajd);
 
-#endif // ZAPPKA_QR_TOTP_H
+#endif

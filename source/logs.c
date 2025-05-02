@@ -1,11 +1,10 @@
 #include "logs.h"
 
 static FILE *log_file = NULL;
-// Create a persistent text buffer at the start of the program
 
 
 void init_logger() {
-    log_file = fopen(LOG_FILE, "a"); // Open once at the start
+    log_file = fopen(LOG_FILE, "a");
 }
 u64 get_free_mem() {
     u64 freeMem;
@@ -21,12 +20,12 @@ void log_to_file(const char *format, ...) {
     fprintf(log_file, "\n");
     va_end(args);
 
-    fflush(log_file); // Flush instead of closing after every write
+    fflush(log_file);
 }
 
 void close_logger() {
     if (log_file) {
-        fclose(log_file); // Close once at the end
+        fclose(log_file);
         log_file = NULL;
     }
 }

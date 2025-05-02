@@ -12,4 +12,4 @@ u64 get_free_mem();
 void log_to_file(const char *format, ...);
 void close_logger();
 
-#endif // LOGS_H
+#endif

@@ -43,7 +43,7 @@ void populateCwavList() {
         fseek(file, 0, SEEK_END);
         u32 fileSize = ftell(file);
         void* buffer = linearAlloc(fileSize);
-        if (!buffer) // This should never happen (unless we load a file too big to fit)
+        if (!buffer)
             svcBreak(USERBREAK_PANIC);
 
         fseek(file, 0, SEEK_SET); 

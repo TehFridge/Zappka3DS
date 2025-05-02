@@ -10,7 +10,7 @@ typedef enum {
     SCENE_MENU = 4,
     SCENE_GAME = 6
 } SceneType;
-typedef void (*ButtonFunction)(); // Function pointer type
+typedef void (*ButtonFunction)();
 typedef struct {
     float x, y, width, height;
     C2D_Image imageNormal;
@@ -22,7 +22,7 @@ typedef struct {
 	SceneType scene4;
 	SceneType scene5;
 	float sizenmachen;
-	ButtonFunction onClick; // Function pointer for button action
+	ButtonFunction onClick;
 } Button;
 
 void drawButton(Button* button, SceneType currentScene);
@@ -30,4 +30,4 @@ void drawButton(Button* button, SceneType currentScene);
 bool isButtonPressed(Button* button, touchPosition touch, int currentScene);
 
 void removeButtonEntries(int max);
-#endif // BUTTONS_H
+#endif

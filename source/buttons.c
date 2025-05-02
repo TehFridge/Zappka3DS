@@ -1,15 +1,12 @@
 #include "buttons.h"
 
 Button buttonsy[100];
-char tileNames[100][256];  // Array to store names/titles
-int tileCount = 0;               // Track number of extracted names
+char tileNames[100][256];
+int tileCount = 0;
 void drawButton(Button* button, SceneType currentScene) {
-    // Skip drawing if button is "removed"
     if (button->width == 0 || button->height == 0 || button->imageNormal.tex == NULL) {
         return;
     }
-
-    // Check if button belongs to the current scene
     if (button->scene == currentScene || 
         button->scene2 == currentScene || 
 		button->scene3 == currentScene ||
@@ -31,7 +28,7 @@ bool isButtonPressed(Button* button, touchPosition touch, int currentScene) {
 }
 
 void removeButtonEntries(int max) {
-    if (max < 5 || max >= 100) return; // Ensure valid range
+    if (max < 5 || max >= 100) return;
 
     for (int i = max; i >= 5; i--) {
         buttonsy[i].isPressed = false;
@@ -41,12 +38,8 @@ void removeButtonEntries(int max) {
         buttonsy[i].y = -9999;
         buttonsy[i].sizenmachen = 0.0f;
         buttonsy[i].onClick = NULL;
-
-        // Remove the image references without deleting the actual textures
         buttonsy[i].imageNormal = (C2D_Image){0};
         buttonsy[i].imagePressed = (C2D_Image){0};
-
-        // Mark scenes as invalid so the button isn't drawn
         buttonsy[i].scene = -1;
         buttonsy[i].scene2 = -1;
         buttonsy[i].scene3 = -1;

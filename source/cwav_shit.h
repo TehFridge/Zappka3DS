@@ -2,7 +2,7 @@
 #define CWAV_SHIT_H
 #include <cwav.h>
 #include <ncsnd.h>
-#include <curl/curl.h> //curlkurwa
+#include <curl/curl.h>
 #include <malloc.h>
 
 
@@ -18,4 +18,4 @@ void populateCwavList();
 
 void freeCwavList();
 
-#endif // CWAV_SHIT_H
+#endif

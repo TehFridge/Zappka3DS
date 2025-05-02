@@ -6,7 +6,7 @@ static int request_count = 0;
 static char *sprite_memory = NULL;
 static size_t sprite_memory_size = 0;
 static LightLock request_lock;
-static bool request_running = true;  // Renamed variable
+static bool request_running = true;
 static Thread request_thread;
 static LightEvent request_event;
 LightLock global_response_lock;
@@ -19,7 +19,7 @@ long response_code;
 bool requestdone;
 bool need_to_load_image;
 bool loadingshit;
-ResponseBuffer global_response = {NULL, 0}; // Global response buffer
+ResponseBuffer global_response = {NULL, 0};
 void log_memory_info(const char *context) {
     log_to_file("[MEMORY] %s - Global response buffer: %p (size: %zu)", 
                 context, global_response.data, global_response.size);
@@ -109,26 +109,19 @@ void log_request_to_file(const char *url, const char *data, struct curl_slist *h
     }
 }
 void load_image(void) {
-    // Allocate fresh memory for this image
     char *img_data = malloc(global_response.size);
     if (!img_data) {
         log_to_file("Failed to malloc %lu bytes for image", global_response.size);
         return;
     }
     memcpy(img_data, global_response.data, global_response.size);
-
-    // Free old sprite memory only AFTER sprite is fully replaced
     if (sprite_memory) {
         free(sprite_memory);
         sprite_memory = NULL;
         sprite_memory_size = 0;
     }
-
-    // Store pointer globally so we can free it later
     sprite_memory = img_data;
     sprite_memory_size = global_response.size;
-
-    // Now pass it to Citro2D — DO NOT FREE img_data after this
     kuponobraz = C2D_SpriteSheetLoadFromMem(img_data, global_response.size);
     if (!kuponobraz) {
         log_to_file("Sprite load failed. Data at %p, size %lu", img_data, global_response.size);
@@ -168,21 +161,9 @@ extern void refresh_data(const char *url, const char *data, struct curl_slist *h
         log_to_file("[refresh_data] Request Data: %s", data);
 
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-		//curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 		curl_easy_setopt(curl, CURLOPT_CAINFO, "romfs:/cacert.pem");
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-        //curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); 
-        //curl_easy_setopt(curl, CURLOPT_DNS_CACHE_TIMEOUT, 300);
-        //curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L); 
-        //curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); 
-		//curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
-		//curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
-		//curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-		//curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-		//curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 		log_to_file("[refresh_data] Setting Verbose Output...", data);
-        //curl_easy_setopt(curl, CURLOPT_STDERR, fopen(LOG_FILE, "a"));
-		//log_to_file("[refresh_data] Open Logs...", data);
         curl_easy_setopt(curl, CURLOPT_URL, url);
 		log_to_file("[refresh_data] Set Url... %s", url);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -190,7 +171,6 @@ extern void refresh_data(const char *url, const char *data, struct curl_slist *h
 		print_headers(headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
 		log_to_file("[refresh_data] Set Data... %s", data);
-		//ResponseBuffer response = {NULL, 0};
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 		log_to_file("[refresh_data] Set CallbackFunc...", data);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &global_response); 
@@ -224,15 +204,11 @@ extern void refresh_data(const char *url, const char *data, struct curl_slist *h
             log_to_file("[refresh_data] Request successful! Response Code: %ld", response_code);
 			if (strstr(url, "szprink")) {
 				log_to_file("[refresh_data] Response image");
-				// FILE *file = fopen("output.t3x", "wb"); // Otwórz plik do zapisu binarnego
-			    // fwrite(&obrazek, sizeof(uint8_t), totalsajz, file); // Zapisz bajty do pliku
-				// fclose(file); // Zamknij plik
 			} else {
 				log_to_file("[refresh_data] Response: %s", global_response.data ? global_response.data : "NULL");
 			}
         }
-        //log_request_to_file(url, data, headers, global_response.data);
-		curl_easy_cleanup(curl); // DO THIS
+		curl_easy_cleanup(curl);
 		curl = NULL;
 
 		loadingshit = false;

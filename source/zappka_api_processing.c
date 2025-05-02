@@ -89,7 +89,7 @@ void wrapText(const char* input, int maxWidth, char* output) {
 }
 void updateprom() {
 	for (int i = 0; i < 30; i++) {
-		if (ploy_ids_bo_kurwa_reload[i][0] != '\0') { // check if the string is not empty
+		if (ploy_ids_bo_kurwa_reload[i][0] != '\0') {
 			log_to_file("%d: %s ", i, ploy_ids_bo_kurwa_reload[i]);
 		}
 	}
@@ -111,11 +111,11 @@ void updateprom() {
 	log_to_file("categoryfeeddone: %d", categoryfeeddone);
 	log_to_file("zonefeeddone: %d", zonefeeddone);
 	if (sfx->numChannels == 2) {
-		cwavPlay(sfx, 0, 1);  // Stereo sound (2 channels)
+		cwavPlay(sfx, 0, 1);
 	} else {
-		cwavPlay(sfx, 0, -1);  // Mono sound (-1 channel)
+		cwavPlay(sfx, 0, -1);
 	}
-	//freeC2DImage(&qr); fuck that func.
+
 	removeButtonEntries(70);
 	process_ids(selectioncodelol);
 	update_promki(id_tokenk, refreshtoken);
@@ -123,12 +123,10 @@ void updateprom() {
 	log_to_file("loadingshit: %d", loadingshit);
 	log_to_file("categoryfeeddone: %d", categoryfeeddone);
 	log_to_file("zonefeeddone: %d", zonefeeddone);
-	//categoryfeeddone = false;
-	//int otpen = compute_magic_number(secrettotpglobal);
-	//doBasicDemo(&qrImage, otpen, userajd);
+
 }
 void update_promki(const char* mejntoken, const char* refrenentokenenkurwen) {
-    // Build the JSON payload.
+
 	
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
@@ -150,66 +148,45 @@ void update_promki(const char* mejntoken, const char* refrenentokenenkurwen) {
 		json_object_set_new(rootn, "variables", variablesn);
 		json_object_set_new(variablesn, "ployOfferId", json_string(ploy_iden));
 	}
-    // Dump the JSON into a compact string.
-    char *json_datan = json_dumps(rootn, JSON_COMPACT);
-    json_decref(rootn); // Decrement reference count for rootn
 
-    // Setup the headers.
+    char *json_datan = json_dumps(rootn, JSON_COMPACT);
+    json_decref(rootn);
+
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
+
     headers = curl_slist_append(headers, "Accept: application/json");
 
     char auth_headeren[1024];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
-    // Initialize a LightEvent for this request.
     LightEvent response_event;
     LightEvent_Init(&response_event, RESET_ONESHOT);
 
-    // This pointer will be filled by the worker thread.
     char *local_response = NULL;
 	size_t response_size = 0;
 
-    // Queue the request using our helper function.
     log_to_file("Queuing request...");
-	//refresh_data("https://api.spapp.zabka.pl/", json_datan, headers);
+
     queue_request("https://api.spapp.zabka.pl/", json_datan, headers, (void **)&local_response, &response_size, &response_event, false);
-	//free(json_datan);
+
 }
 void load_m_prom() {
 	if (sfx->numChannels == 2) {
-		cwavPlay(sfx, 0, 1);  // Stereo sound (2 channels)
+		cwavPlay(sfx, 0, 1);
 	} else {
-		cwavPlay(sfx, 0, -1);  // Mono sound (-1 channel)
+		cwavPlay(sfx, 0, -1);
 	}
-	// for (int i = 0; i < 40; i++) {
-		// log_to_file("Button %d:\n", i);
-		// log_to_file("  Position: (%.2f, %.2f)\n", buttonsy[i].x, buttonsy[i].y);
-		// log_to_file("  Size: %.2f x %.2f\n", buttonsy[i].width, buttonsy[i].height);
-		// log_to_file("  ImageNormal: %p\n", (void*)buttonsy[i].imageNormal.tex);
-		// log_to_file("  ImagePressed: %p\n", (void*)buttonsy[i].imagePressed.tex);
-		// log_to_file("  Is Pressed: %s\n", buttonsy[i].isPressed ? "true" : "false");
-		// log_to_file("  Scene: %d\n", buttonsy[i].scene);
-		// log_to_file("  Scene2: %d\n", buttonsy[i].scene2);
-		// log_to_file("  Scene3: %d\n", buttonsy[i].scene3);
-		// log_to_file("  Scene4: %d\n", buttonsy[i].scene4);
-		// log_to_file("  sizenmachen: %.2f\n", buttonsy[i].sizenmachen);
-		// log_to_file("  onClick function pointer: %p\n", (void*)buttonsy[i].onClick);
-		// log_to_file("\n");
-	// }
+
 	loadmore_promki(id_tokenk, refreshtoken, kurwacursor, aftermachenkurw);
-	//categoryfeeddone = false;
-	//int otpen = compute_magic_number(secrettotpglobal);
-	//doBasicDemo(&qrImage, otpen, userajd);
+
 }
 void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, const char* aftermachen, const char* afterajd) {
 	log_to_file("\n aftermachen: %s", aftermachen);
 	log_to_file("\n afterajd: %s", afterajd);
-    // Build the JSON payload.
+
 	
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
@@ -218,23 +195,20 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
 	json_object_set_new(rootn, "variables", variablesn);
 	json_object_set_new(variablesn, "ployOfferListingId", json_string(afterajd));
 	json_object_set_new(variablesn, "after", json_string(aftermachen));
-    // Dump the JSON into a compact string.
-    char *json_datan = json_dumps(rootn, JSON_COMPACT);
-    json_decref(rootn); // Decrement reference count for rootn
 
-    // Setup the headers.
+    char *json_datan = json_dumps(rootn, JSON_COMPACT);
+    json_decref(rootn);
+
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
+
     headers = curl_slist_append(headers, "Accept: application/json");
 
     char auth_headeren[1024];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
-	//refresh_data("https://api.spapp.zabka.pl/", json_datan, headers);
     refresh_data("https://api.spapp.zabka.pl/", json_datan, headers);
     log_to_file("Processing JSON response...");
 	bool cursor_here = false;
@@ -250,7 +224,6 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
 		cursor_here = true;
 	}
 
-	//tileCount = 0; // Reset tileCount to avoid accumulation across calls
 	int kurwavar = 0;
 	kurwavar = tileCount;
 	log_to_file("tlc: %d\n", tileCount);
@@ -274,18 +247,18 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
 		typy_bo_kurwa_reload[tileCount + kurwavar - 5][49] = '\0'; 
 		strncpy(ploy_ids_bo_kurwa_reload[tileCount + kurwavar - 5], id_st, 49);
 		ploy_ids_bo_kurwa_reload[tileCount + kurwavar - 5][49] = '\0';  
-		//log_to_file("id%d: %s\n", tileCount + kurwavar, id_st);
+
 		json_t *coupon = json_object_get(tile, "coupon");
 		json_t *targetPromotion = json_object_get(coupon, "targetPromotion");
 		json_t *name = json_object_get(targetPromotion, "name");
 
 		const char *textenen = json_string_value(name);
-		char texten[15]; // 10 characters + 1 for null terminator
+		char texten[15];
 		strncpy(texten, textenen, 14);
-		texten[14] = '\0'; // Ensure null-terminated
+		texten[14] = '\0';
 
 		if (texten) {
-			// Process text before incrementing tileCount
+
 			C2D_TextFontParse(&g_kuponText[tileCount + kurwavar - 5], font[0], kupon_text_Buf, texten);
 			C2D_TextOptimize(&g_kuponText[tileCount + kurwavar - 5]);
 			log_to_file("adding button: %d \n", tileCount + kurwavar + 1);
@@ -314,8 +287,8 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
 			log_to_file("Tile %zu: %s", index, tileNames[tileCount + kurwavar]);
 			log_to_file("Button %zu", tileCount + kurwavar);
 
-			tileCount++; // Increment after processing
-			//kurwavar++;
+			tileCount++;
+
 		}
 	}
 	if (cursor_here) {
@@ -324,25 +297,11 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
 
 	tileCount = tileCount + kurwavar; 
     json_decref(response_root);
-	// for (int i = 0; i < 40; i++) {
-		// log_to_file("Button %d:\n", i);
-		// log_to_file("  Position: (%.2f, %.2f)\n", buttonsy[i].x, buttonsy[i].y);
-		// log_to_file("  Size: %.2f x %.2f\n", buttonsy[i].width, buttonsy[i].height);
-		// log_to_file("  ImageNormal: %p\n", (void*)buttonsy[i].imageNormal.tex);
-		// log_to_file("  ImagePressed: %p\n", (void*)buttonsy[i].imagePressed.tex);
-		// log_to_file("  Is Pressed: %s\n", buttonsy[i].isPressed ? "true" : "false");
-		// log_to_file("  Scene: %d\n", buttonsy[i].scene);
-		// log_to_file("  Scene2: %d\n", buttonsy[i].scene2);
-		// log_to_file("  Scene3: %d\n", buttonsy[i].scene3);
-		// log_to_file("  Scene4: %d\n", buttonsy[i].scene4);
-		// log_to_file("  sizenmachen: %.2f\n", buttonsy[i].sizenmachen);
-		// log_to_file("  onClick function pointer: %p\n", (void*)buttonsy[i].onClick);
-		// log_to_file("\n");
-	// }
+
 
 }
 void activate_coupon(const char* mejntoken, const char* refrenentokenenkurwen) {
-    // Build the JSON payload.
+
 	
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
@@ -361,31 +320,26 @@ void activate_coupon(const char* mejntoken, const char* refrenentokenenkurwen) {
 		json_object_set_new(variablesn, "input", activateCouponInputn);
 		json_object_set_new(activateCouponInputn, "couponId", json_string(ploy_iden));
 	}
-    // Dump the JSON into a compact string.
-    char *json_datan = json_dumps(rootn, JSON_COMPACT);
-    json_decref(rootn); // Decrement reference count for rootn
 
-    // Setup the headers.
+    char *json_datan = json_dumps(rootn, JSON_COMPACT);
+    json_decref(rootn);
+
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
+
     headers = curl_slist_append(headers, "Accept: application/json");
 
     char auth_headeren[1024];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
-    // Initialize a LightEvent for this request.
     LightEvent response_event;
     LightEvent_Init(&response_event, RESET_ONESHOT);
 
-    // This pointer will be filled by the worker thread.
     char *local_response = NULL;
 	size_t response_size = 0;
 
-    // Queue the request using our helper function.
     log_to_file("Queuing request...");
     queue_request("https://api.spapp.zabka.pl/", json_datan, headers, (void **)&local_response, &response_size, &response_event, false);
 	aktywacja_done = true;
@@ -397,7 +351,6 @@ void process_ids(int selectedbutton) {
 	json_done = false;
 	json_t *response_root = json_loads(global_response.data, 0, NULL);
 
-	//zabkazonefeed.data.zoneFeed.sections[1].tiles[selectioncode + pagegap].offerTreeLevel.id
 	json_t *data = json_object_get(response_root, "data");
 	
 	if (!dawajploy) {
@@ -408,14 +361,14 @@ void process_ids(int selectedbutton) {
 			json_t *sections = json_object_get(zoneFeed, "sections");
 
 
-			json_t *first_section = json_array_get(sections, 0);  // Get first section
+			json_t *first_section = json_array_get(sections, 0);
 
 
 			json_t *tiles = json_object_get(first_section, "tiles");	
 			log_to_file("button: %d", selectedbutton);
 			size_t tile_count = json_array_size(tiles);
 			log_to_file("Number of tiles: %zu", tile_count);
-			json_t *tilesselected = json_array_get(tiles, selectedbutton - 5);  // Get first section
+			json_t *tilesselected = json_array_get(tiles, selectedbutton - 5);
 			log_to_file("arraytle: %d", selectedbutton - 5);
 			json_t *offerTreeLevel = json_object_get(tilesselected, "offerTreeLevel");
 			json_t *id = json_object_get(offerTreeLevel, "id");
@@ -427,7 +380,7 @@ void process_ids(int selectedbutton) {
 			}
 
 			if (id) {
-				free(ploy_iden); // Free previous value if any
+				free(ploy_iden);
 				ploy_iden = strdup(json_string_value(id));
 				log_to_file("\nLoading id: %s...", ploy_iden);
 				aftermachenkurw = strdup(ploy_iden);
@@ -441,10 +394,8 @@ void process_ids(int selectedbutton) {
 			json_t *ployOffers = json_object_get(ployOfferListing, "ployOffers");
 
 
-			json_t *first_section = json_array_get(ployOffers, selectedbutton - 5);  // Get first section
+			json_t *first_section = json_array_get(ployOffers, selectedbutton - 5);
 
-
-			//json_t *id = json_object_get(first_section, "id");
 
 			if (categoryfeeddone) {
 				if (strcmp(typy_bo_kurwa_reload[selectedbutton - 5], "PloyOffer")) {
@@ -454,7 +405,7 @@ void process_ids(int selectedbutton) {
 				}
 			}
 			if (ploy_ids_bo_kurwa_reload[selectedbutton - 5]) {
-				free(ploy_iden); // Free previous value if any
+				free(ploy_iden);
 				ploy_iden = strdup(ploy_ids_bo_kurwa_reload[selectedbutton - 5]);
 				log_to_file("\nLoading id: %s...", ploy_iden);
 				log_to_file("\nploy: %d", selectedbutton - 5);
@@ -467,7 +418,7 @@ void process_ids(int selectedbutton) {
 
 
 			json_t *sections = json_object_get(zoneFeed, "ployOffers");
-			json_t *tilesselected = json_array_get(sections, selectedbutton - 5);  // Get first section
+			json_t *tilesselected = json_array_get(sections, selectedbutton - 5);
 			json_t *id = json_object_get(tilesselected, "id");
 			if (ploy_ids_bo_kurwa_reload[selectedbutton - 5]) {
 				free(ploy_iden);
@@ -484,7 +435,7 @@ void process_ids(int selectedbutton) {
 			log_to_file("button: %d", selectedbutton);
 			size_t tile_count = json_array_size(levels);
 			log_to_file("Number of tiles: %zu", tile_count);
-			json_t *tilesselected = json_array_get(levels, selectedbutton - 5);  // Get first section
+			json_t *tilesselected = json_array_get(levels, selectedbutton - 5);
 			log_to_file("arraytle: %d", selectedbutton - 5);
 			json_t *id = json_object_get(tilesselected, "id");
 			json_t *typename = json_object_get(tilesselected, "__typename");
@@ -494,7 +445,7 @@ void process_ids(int selectedbutton) {
 				categoryornah = false;
 			}
 			if (id) {
-				free(ploy_iden); // Free previous value if any
+				free(ploy_iden);
 				ploy_iden = strdup(json_string_value(id));
 				log_to_file("\nLoading id: %s...", ploy_iden);
 				aftermachenkurw = strdup(ploy_iden);
@@ -506,8 +457,7 @@ void process_ids(int selectedbutton) {
 	json_decref(response_root);
 	log_to_file("id: %s", ploy_iden);
 	LightLock_Unlock(&global_response_lock);
-    //free_global_response();
-   // // global_response = NULL; //KURWAAAAAAAAAAAAAAAAAA
+
 }
 void process_kupony() {
 	memset(ploy_ids_bo_kurwa_reload, 0, sizeof(ploy_ids_bo_kurwa_reload));
@@ -526,7 +476,7 @@ void process_kupony() {
             log_to_file("ERROR: Failed to parse JSON response.");
 			printf("\nERROR: Failed to parse JSON response.");
             free_global_response();
-            // global_response = NULL;
+
             return;
         }
 
@@ -551,7 +501,7 @@ void process_kupony() {
             return;
         }
 
-        json_t *first_section = json_array_get(sections, 0);  // Get first section
+        json_t *first_section = json_array_get(sections, 0);
         if (!first_section) {
             log_to_file("ERROR: 'sections[0]' is null.");
             json_decref(response_root);
@@ -565,12 +515,11 @@ void process_kupony() {
             return;
         }
 
-        // Extract names/titles from tiles
         tileCount = 0;
         size_t index;
         json_t *tile;
 		json_array_foreach(tiles, index, tile) {
-			if (tileCount >= json_array_size(tiles)) break; // Prevent overflow
+			if (tileCount >= json_array_size(tiles)) break;
 
 			json_t *offerTreeLevel = json_object_get(tile, "offerTreeLevel");
 			if (offerTreeLevel) {
@@ -579,7 +528,7 @@ void process_kupony() {
 				if (strcmp(json_string_value(title) ? json_string_value(title) : json_string_value(name), "Partnerzy")) {
 					const char *text = json_string_value(title) ? json_string_value(title) : json_string_value(name);
 					if (text) {
-						// Ensure text is processed before incrementing tileCount
+
 						C2D_TextFontParse(&g_kuponText[tileCount], font[0], kupon_text_Buf, text);
 						C2D_TextOptimize(&g_kuponText[tileCount]);
 						
@@ -609,7 +558,7 @@ void process_kupony() {
 						log_to_file("Button %zu", 5 + tileCount);
 						printf("\nButton %zu", 5 + tileCount);
 
-						tileCount++; // Increment after processing
+						tileCount++;
 					}
 				}
 			}
@@ -618,7 +567,7 @@ void process_kupony() {
         json_decref(response_root);
 		zonefeeddone = true;
 		loadingshit = true;
-		//free(tileNames);
+
     } else {
         log_to_file("ERROR: No response data available to process.");
     }
@@ -639,7 +588,7 @@ void process_category() {
     if (!response_root) {
         log_to_file("ERROR: Failed to parse JSON response.");
         free_global_response();
-        // global_response = NULL;
+
         return;
     }
 	if (!categoryornah) {
@@ -648,18 +597,18 @@ void process_category() {
 		json_t *offerCategory = json_object_get(offerCategoryFeed, "offerCategory");
 		json_t *levels = json_object_get(offerCategory, "levels");
 
-		tileCount = 0; // Reset tileCount to avoid accumulation across calls
+		tileCount = 0;
 		size_t index;
 		json_t *tile;
 		
 		json_array_foreach(levels, index, tile) {
-			if (tileCount >= json_array_size(levels)) break; // Prevent buffer overflow
+			if (tileCount >= json_array_size(levels)) break;
 
 			json_t *title = json_object_get(tile, "title");
 			const char *text = json_string_value(title);
 
 			if (text) {
-				// Process text before incrementing tileCount
+
 				C2D_TextFontParse(&g_kuponText[tileCount], font[0], kupon_text_Buf, text);
 				C2D_TextOptimize(&g_kuponText[tileCount]);
 
@@ -687,7 +636,7 @@ void process_category() {
 				log_to_file("Tile %zu: %s", index, tileNames[tileCount]);
 				log_to_file("Button %zu", 5 + tileCount);
 
-				tileCount++; // Increment after processing
+				tileCount++;
 			}
 		}
 	} else {
@@ -705,13 +654,13 @@ void process_category() {
 
 
 
-		tileCount = 0; // Reset tileCount to avoid accumulation across calls
+		tileCount = 0;
 		size_t index;
 		json_t *tile;
 		
 		json_array_foreach(ployOffers, index, tile) {
-			if (tileCount >= json_array_size(ployOffers)) break; // Prevent buffer overflow
-			json_t *first_section = json_array_get(ployOffers, index);  // Get first section
+			if (tileCount >= json_array_size(ployOffers)) break;
+			json_t *first_section = json_array_get(ployOffers, index);
 
 
 			json_t *id = json_object_get(first_section, "id");
@@ -719,20 +668,20 @@ void process_category() {
 			const char *type_st = json_string_value(typename);
 			const char *id_st = json_string_value(id);
 			strncpy(typy_bo_kurwa_reload[tileCount], type_st, 49);
-			typy_bo_kurwa_reload[tileCount][49] = '\0';  // Bezpiecznie zakończ
+			typy_bo_kurwa_reload[tileCount][49] = '\0';
 			strncpy(ploy_ids_bo_kurwa_reload[tileCount], id_st, 49);
-			ploy_ids_bo_kurwa_reload[tileCount][49] = '\0';  // Bezpiecznie zakończ
+			ploy_ids_bo_kurwa_reload[tileCount][49] = '\0';
 			log_to_file("id%d: %s\n", tileCount, id_st);
 			json_t *coupon = json_object_get(tile, "coupon");
 			json_t *targetPromotion = json_object_get(coupon, "targetPromotion");
 			json_t *name = json_object_get(targetPromotion, "name");
 			const char *textenen = json_string_value(name);
-			char texten[15]; // 10 characters + 1 for null terminator
+			char texten[15];
 			strncpy(texten, textenen, 14);
-			texten[14] = '\0'; // Ensure null-terminated
+			texten[14] = '\0';
 
 			if (texten) {
-				// Process text before incrementing tileCount
+
 				C2D_TextFontParse(&g_kuponText[tileCount], font[0], kupon_text_Buf, texten);
 				C2D_TextOptimize(&g_kuponText[tileCount]);
 
@@ -761,7 +710,7 @@ void process_category() {
 				log_to_file("Tile %zu: %s", index, tileNames[tileCount]);
 				log_to_file("Button %zu", 5 + tileCount);
 
-				tileCount++; // Increment after processing
+				tileCount++;
 				kurwavar++;
 			}
 		}
@@ -771,8 +720,7 @@ void process_category() {
 		tileCount = tileCount + 5;
 	}
     json_decref(response_root);
-    
-    //json_done = true;
+
     przycskmachen = true;
 	loadingshit = false;
 	json_done = true;
@@ -791,7 +739,7 @@ void process_ofertamachen() {
     if (!response_root) {
         log_to_file("ERROR: Failed to parse JSON response.");
         free_global_response(); 
-        // global_response = NULL;
+
         return;
     }
 
@@ -846,7 +794,7 @@ void process_ofertamachen() {
 	char wrapped[512];
 	removeTrailingNewline(opisen);
     wrapText(opisen, 50, wrapped);  
-	//log_to_file("%s\n", wrapped);  // Print result
+
     C2D_TextFontParse(&g_kuponText[0], font[0], kupon_text_Buf, wrapped);
     C2D_TextOptimize(&g_kuponText[0]);
     C2D_TextFontParse(&g_kuponText[1], font[0], kupon_text_Buf, cenastr);
@@ -854,8 +802,7 @@ void process_ofertamachen() {
 
 
     json_decref(response_root);
-    
-    //json_done = true;
+
     przycskmachen = true;
     categoryfeeddone = true;
 	loadingshit = false;
@@ -871,17 +818,15 @@ void process_ofertamachen() {
     json_t *rootn = json_object();
     json_object_set_new(rootn, "url", json_string(urlimage));
 
-    // Dump the JSON into a compact string.
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
-    json_decref(rootn); // Decrement reference count for rootn	
+    json_decref(rootn);
 	free((void *)urlimage);
 
-    // Initialize a LightEvent for this request.
     LightEvent response_event;
     LightEvent_Init(&response_event, RESET_ONESHOT);
 	uint8_t *local_response = NULL;
 	size_t response_size = 0;
-    // Setup the headers.
+
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
@@ -901,7 +846,7 @@ void process_ployoffers() {
     if (!response_root) {
         log_to_file("ERROR: Failed to parse JSON response.");
         free_global_response();
-       // // global_response = NULL;
+
         return;
     }
 
@@ -909,12 +854,12 @@ void process_ployoffers() {
     json_t *ployOfferListing = json_object_get(data, "ployOfferListing");
 	json_t *ployOffers = json_object_get(ployOfferListing, "ployOffers");
 
-    tileCount = 0; // Reset tileCount to avoid accumulation across calls
+    tileCount = 0;
     size_t index;
     json_t *tile;
     
     json_array_foreach(ployOffers, index, tile) {
-        if (tileCount >= json_array_size(ployOffers)) break; // Prevent buffer overflow
+        if (tileCount >= json_array_size(ployOffers)) break;
 
 		json_t *coupon = json_object_get(tile, "coupon");
 		json_t *targetPromotion = json_object_get(coupon, "targetPromotion");
@@ -922,7 +867,7 @@ void process_ployoffers() {
         const char *text = json_string_value(name);
 
         if (text) {
-            // Process text before incrementing tileCount
+
             C2D_TextFontParse(&g_kuponText[tileCount], font[0], kupon_text_Buf, text);
             C2D_TextOptimize(&g_kuponText[tileCount]);
 
@@ -951,32 +896,29 @@ void process_ployoffers() {
             log_to_file("Tile %zu: %s", index, tileNames[tileCount]);
             log_to_file("Button %zu", 5 + tileCount);
 
-            tileCount++; // Increment after processing
+            tileCount++;
         }
     }
 
     json_decref(response_root);
-    
-    //json_done = true;
+
     przycskmachen = true;
     categoryfeeddone = true;
 	loadingshit = false;
 	json_done = true;
 }
-void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen) {
-    // Build the JSON payload.
+void getcard(const char* mejntoken, const char* refrenentokenenkurwen) {
+
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
     
-    json_object_set_new(rootn, "operationName", json_string("LoyaltyPoints"));
-    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
-    json_object_set_new(rootn, "variables", variablesn);
+	json_object_set_new(rootn, "operationName", json_string("PaymentCards"));
+    json_object_set_new(rootn, "query", json_string("query PaymentCards { paymentCards { paymentCards { id isDefault lastFourDigits } } }"));
+    json_object_set_new(rootn, "variables", json_object());
 
-    // Dump the JSON into a compact string.
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
-    json_decref(rootn); // Decrement reference count for rootn
+    json_decref(rootn);
 
-    // Setup the headers.
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
@@ -988,7 +930,53 @@ void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen)
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
-    // Initialize a LightEvent for this request.
+    LightEvent response_event;
+    LightEvent_Init(&response_event, RESET_ONESHOT);
+
+    refresh_data("https://api.spapp.zabka.pl/", json_datan, headers);
+	json_t *response_root = json_loads(global_response.data, 0, NULL);
+
+    json_t *datas = json_object_get(response_root, "data");
+    json_t *paymentCardsWrapper = json_object_get(datas, "paymentCards");
+    json_t *paymentCards = json_object_get(paymentCardsWrapper, "paymentCards");
+
+    if (json_is_array(paymentCards) && json_array_size(paymentCards) > 0) {
+		json_t *fajlroot = json_load_file("/3ds/data.json", 0, NULL);
+		json_object_set_new(fajlroot, "has_nano", json_string("yes"));
+		json_dump_file(fajlroot, "/3ds/data.json", JSON_COMPACT);
+		json_decref(fajlroot);
+		usernan = "yes";
+    } else {
+		json_t *fajlroot = json_load_file("/3ds/data.json", 0, NULL);
+		json_object_set_new(fajlroot, "has_nano", json_string("no"));
+		json_dump_file(fajlroot, "/3ds/data.json", JSON_COMPACT);
+		json_decref(fajlroot);
+		usernan = "no";
+    }
+}
+void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen) {
+
+    json_t *rootn = json_object();
+    json_t *variablesn = json_object();
+    
+    json_object_set_new(rootn, "operationName", json_string("LoyaltyPoints"));
+    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
+    json_object_set_new(rootn, "variables", variablesn);
+
+    char *json_datan = json_dumps(rootn, JSON_COMPACT);
+    json_decref(rootn);
+
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
+    headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
+    headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
+    headers = curl_slist_append(headers, "Accept: application/json");
+
+    char auth_headeren[1024];
+    snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
+    headers = curl_slist_append(headers, auth_headeren);
+
     LightEvent response_event;
     LightEvent_Init(&response_event, RESET_ONESHOT);
 
@@ -1020,7 +1008,7 @@ void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen)
 	}
 }
 void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen) {
-    // Build the JSON payload.
+
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
     
@@ -1028,11 +1016,9 @@ void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen) {
     json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
     json_object_set_new(rootn, "variables", variablesn);
 
-    // Dump the JSON into a compact string.
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
-    json_decref(rootn); // Decrement reference count for rootn
+    json_decref(rootn);
 
-    // Setup the headers.
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
@@ -1044,21 +1030,18 @@ void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen) {
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
-    // Initialize a LightEvent for this request.
     LightEvent response_event;
     LightEvent_Init(&response_event, RESET_ONESHOT);
 
-    // This pointer will be filled by the worker thread.
     char *local_response = NULL;
 	size_t response_size = 0;
 
-    // Queue the request using our helper function.
     log_to_file("Queuing request...");
     queue_request("https://api.spapp.zabka.pl/", json_datan, headers, (void **)&local_response, &response_size, &response_event, false);
 }
 
 void updateploy(const char* mejntoken, const char* refrenentokenenkurwen) {
-    // Build the JSON payload.
+
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
     
@@ -1066,16 +1049,14 @@ void updateploy(const char* mejntoken, const char* refrenentokenenkurwen) {
     json_object_set_new(rootn, "query", json_string("query ZoneFeedByKey($zoneFeedKey: String!, $after: String) { zoneFeed(zoneFeedKey: $zoneFeedKey, after: $after) { sections { __typename ... on OfferTileSection { __typename ...OfferTileSectionParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on DealCarousel { __typename ...DealCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } ... on DealListingCarousel { __typename ...DealListingCarouselParts } } pagination { cursor } } }  fragment OfferTileSectionParts on OfferTileSection { id title tiles { id backgroundImage { url } offerTreeLevel { __typename ... on OfferCategory { id name } ... on PloyOfferListing { id title } ... on ProductPromotionListing { id title } } } }  fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title }  fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } }  fragment RelativeProductPromotionPriceLabelParts on RelativeProductPromotionPriceLabel { percentage roundOff textColor { __typename ...ColorParts } }  fragment AbsoluteProductPromotionPriceLabelParts on AbsoluteProductPromotionPriceLabel { price { __typename ...PriceParts } roundOff textColor { __typename ...ColorParts } }  fragment LargeProductPromotionListingBannerPropertiesParts on LargeProductPromotionListingBannerProperties { image { url } }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment LargePloyOfferBannerPropertiesParts on LargePloyOfferBannerProperties { image { url } }  fragment MediumPloyOfferBannerPropertiesParts on MediumPloyOfferBannerProperties { image { url } }  fragment PloyOfferPriceLabelParts on PloyOfferPriceLabel { ployPrice roundOff textColor { __typename ...ColorParts } }  fragment CtaParts on Cta { title subtitle action { label link } id image { url } __typename }  fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } }  fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename }  fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } }  fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on ProductPromotionListingBanner { id header title validFrom validUntil exclusivity priceLabel { __typename ... on RelativeProductPromotionPriceLabel { __typename ...RelativeProductPromotionPriceLabelParts } ... on AbsoluteProductPromotionPriceLabel { __typename ...AbsoluteProductPromotionPriceLabelParts } } listingRef: productPromotionListingRef { id } properties { __typename ... on LargeProductPromotionListingBannerProperties { __typename ...LargeProductPromotionListingBannerPropertiesParts } } } ... on PloyOfferBanner { id ployOffer { __typename ...PloyOfferParts id } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } ... on MediumPloyOfferBannerProperties { __typename ...MediumPloyOfferBannerPropertiesParts } } } ... on PloyOfferListingBanner { id header title validFrom validUntil exclusivity ployOfferListingRef { id } priceLabel { __typename ...PloyOfferPriceLabelParts } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } }  fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore }  fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } }  fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }  fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } }  fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } }  fragment OptionTileParts on OptionTile { id label link }  fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } }  fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }  fragment DealListingCarouselParts on DealListingCarousel { id dealListing { id title deals { __typename ...DealParts id } } properties { __typename ...ScrollCarouselPropertiesParts } }"));
     json_object_set_new(rootn, "variables", variablesn);
 	json_object_set_new(variablesn, "zoneFeedKey", json_string("ploy-zabka"));
-    // Dump the JSON into a compact string.
-    char *json_datan = json_dumps(rootn, JSON_COMPACT);
-    json_decref(rootn); // Decrement reference count for rootn
 
-    // Setup the headers.
+    char *json_datan = json_dumps(rootn, JSON_COMPACT);
+    json_decref(rootn);
+
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
-    //headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
+
     headers = curl_slist_append(headers, "Accept: application/json");
     headers = curl_slist_append(headers, "Accept: application/json");
 
@@ -1083,16 +1064,12 @@ void updateploy(const char* mejntoken, const char* refrenentokenenkurwen) {
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
-    // Initialize a LightEvent for this request.
     LightEvent response_event;
     LightEvent_Init(&response_event, RESET_ONESHOT);
 
-    // This pointer will be filled by the worker thread.
     char *local_response = NULL;
 	size_t response_size = 0;
 
-
-    // Queue the request using our helper function.
     log_to_file("Queuing request...");
     queue_request("https://api.spapp.zabka.pl/", json_datan, headers, (void **)&local_response, &response_size, &response_event, false);
 }
@@ -1101,10 +1078,9 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
 
-    // Initial request
     json_object_set_new(rootn, "operationName", json_string("LoyaltyPoints"));
     json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
-    json_object_set_new(rootn, "variables", variablesn); // Empty object
+    json_object_set_new(rootn, "variables", variablesn);
 
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
 
@@ -1118,33 +1094,28 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
-    // First API call to refresh_data using the global response buffer
     refresh_data("https://api.spapp.zabka.pl/", json_datan, headers);
 
-    // Free old JSON data
     free(json_datan);
-    curl_slist_free_all(headers);  // Free headers
+    curl_slist_free_all(headers);
     headers = NULL;
-    json_object_clear(rootn);  // Clear JSON object
+    json_object_clear(rootn);
 
-    // Use the global global_response to load the response JSON
 	if (response_code != 0){
 		if (strstr(global_response.data, "points") == NULL) {
-			// Token refresh logic if "points" is not found
+
 			json_object_set_new(rootn, "grantType", json_string("refresh_token"));
 			json_object_set_new(rootn, "refreshToken", json_string(refrenentokenenkurwen));
-			json_datan = json_dumps(rootn, JSON_COMPACT);  // Create new JSON data
+			json_datan = json_dumps(rootn, JSON_COMPACT);
 
 			headers = curl_slist_append(headers, "Content-Type: application/json");
-			// Second API call to refresh token
+
 			refresh_data("https://securetoken.googleapis.com/v1/token?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_datan, headers);
 
-			// Free previous data before reusing it
 			free(json_datan);
 
 			json_object_clear(rootn);
 
-			// Use the global global_response to load the response JSON for refresh token
 			if (global_response.data) {
 				json_t *response_root = json_loads(global_response.data, 0, NULL);
 				if (response_root) {
@@ -1153,7 +1124,6 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 					id_tokenk = strdup(json_string_value(access_tokent));
 					refreshtoken = strdup(json_string_value(refresh_tokent));
 
-					// Save tokens to file
 					json_decref(response_root);
 					json_t *fajlroot = json_load_file("/3ds/data.json", 0, NULL);
 					json_object_set_new(fajlroot, "token", json_string(id_tokenk));
@@ -1162,12 +1132,13 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 					json_decref(fajlroot);
 				}
 			}
+			getcard(id_tokenk, refreshtoken);
 
-			// Free and reset headers
 			curl_slist_free_all(headers);
 			headers = NULL;
 		} else {
 			getzappsy_startup(id_tokenk, refreshtoken);
+			getcard(id_tokenk, refreshtoken);
 		}
 	}
 }
@@ -1207,7 +1178,7 @@ void login_flow(const char *phone_number, const char *verification_code) {
 
 
     free(json_data);
-    //json_decref(root);
+
 
     json_t *response_root = json_loads(global_response.data, 0, NULL);
     if (response_root) {
@@ -1215,7 +1186,7 @@ void login_flow(const char *phone_number, const char *verification_code) {
         json_t *sign_in = json_object_get(data, "signIn");
         json_t *custom_token_json = json_object_get(sign_in, "customToken");
         id_tokenk = strdup(json_string_value(custom_token_json));
-		//printf("tokenjprdl: %s\n", id_token);
+
         json_decref(response_root);
     }
 	
@@ -1226,7 +1197,6 @@ void login_flow(const char *phone_number, const char *verification_code) {
 	
 	headers = curl_slist_append(headers, "Content-Type: application/json");
 
-	//root = json_object();
 	json_object_set_new(root, "token", json_string(id_tokenk));
 	json_object_set_new(root, "returnSecureToken", json_string("true"));
 	json_data = json_dumps(root, JSON_COMPACT);
@@ -1281,8 +1251,7 @@ void login_flow(const char *phone_number, const char *verification_code) {
     json_object_set_new(root, "query", json_string("mutation SignIn($signInInput: SignInInput!) { signIn(signInInput: $signInInput) { profile { __typename ...UserProfileParts } } }  fragment UserProfileParts on UserProfile { email gender }"));
     json_object_set_new(root, "variables", variables);
 	json_data = json_dumps(root, JSON_COMPACT);
-	
-	//fprintf(fptr, json_data);
+
 	
 	refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
 
@@ -1294,7 +1263,7 @@ void login_flow(const char *phone_number, const char *verification_code) {
 
     free(json_data);
 	json_object_clear(root);
-	//response_root = NULL;
+
 
     json_object_set_new(root, "operationName", json_string("QrCode"));
     json_object_set_new(root, "query", json_string("query QrCode { qrCode { loyalSecret paySecret ployId } }"));
@@ -1308,19 +1277,47 @@ void login_flow(const char *phone_number, const char *verification_code) {
     json_t *qrCode = json_object_get(data, "qrCode");
     json_t *ployId = json_object_get(qrCode, "ployId");
 	json_t *loyalSecret = json_object_get(qrCode, "loyalSecret");
+	json_t *paymentSecret = json_object_get(qrCode, "paySecret");
     char *user_id = strdup(json_string_value(ployId));
 	char *hex_secret = strdup(json_string_value(loyalSecret));
-	secrettotpglobal = hex_secret;
+	char *pay_secret = strdup(json_string_value(paymentSecret));
+	
+	
 	userajd = user_id;
 	json_object_set_new(saveroot, "user_id", json_string(user_id));
 	json_object_set_new(saveroot, "hex_secret", json_string(hex_secret));
+	json_object_set_new(saveroot, "pay_secret", json_string(pay_secret));
 	
 	
 	
     free(json_data);
 	json_object_clear(root);
-	//response_root = NULL;
 
+	json_object_set_new(root, "operationName", json_string("PaymentCards"));
+    json_object_set_new(root, "query", json_string("query PaymentCards { paymentCards { paymentCards { id isDefault lastFourDigits } } }"));
+    json_object_set_new(root, "variables", json_object());
+	
+    json_data = json_dumps(root, JSON_COMPACT);
+    refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
+	response_root = json_loads(global_response.data, 0, NULL);
+
+    json_t *datas = json_object_get(response_root, "data");
+    json_t *paymentCardsWrapper = json_object_get(datas, "paymentCards");
+    json_t *paymentCards = json_object_get(paymentCardsWrapper, "paymentCards");
+
+    if (json_is_array(paymentCards) && json_array_size(paymentCards) > 0) {
+        secrettotpglobal = pay_secret;
+		json_object_set_new(saveroot, "has_nano", json_string("yes"));
+		usernan = "yes";
+    } else {
+        secrettotpglobal = hex_secret;
+		json_object_set_new(saveroot, "has_nano", json_string("no"));
+		usernan = "no";
+    }
+
+    json_object_clear(root);
+	
+	
     json_object_set_new(root, "operationName", json_string("GetProfile"));
     json_object_set_new(root, "query", json_string("query GetProfile { profile { id firstName birthDate phoneNumber { countryCode nationalNumber } email } }"));
     json_object_set_new(root, "variables", json_object());
