@@ -34,8 +34,8 @@
 
 size_t totalsajz = 0;
 
-bool cpu_debug = true;
-bool citra_machen = false;
+bool cpu_debug = false;
+bool citra_machen = true;
 uint8_t* obrazek = NULL;
 char *zabkazonefeed = NULL;
 extern bool json_done;
@@ -70,6 +70,7 @@ extern const char *userajd;
 extern const char *usernan;
 const char *nejmenmachen;
 int amountzappsy;
+extern bool youfuckedup;
 extern char zappsystr[64];
 float currentY = -400.0f;
 float currentY2 = -400.0f;
@@ -88,6 +89,15 @@ struct memory {
   char *response;
   size_t size;
 };
+float easeHop(float t, float start, float end, float duration) {
+    float s = 1.70158f * 1.5f; // overshoot factor
+    t /= duration;
+    t -= 1.0f;
+    return (end - start) * (t * t * ((s + 1) * t + s) + 1.0f) + start;
+}
+
+
+
 void createDirectory(const char* dirPath) {
     FS_Path fsPath = fsMakePath(PATH_ASCII, dirPath);
     FS_Archive sdmcArchive;
@@ -644,7 +654,7 @@ int main(int argc, char* argv[]) {
 	SwkbdButton button = SWKBD_BUTTON_NONE;
 	bool didit = false;
 	bool swkbdTriggered = false;
-    Scene = 1;
+    Scene = 0;
 	bool sceneStarted = false; 
 	bool rei = false;
 	bool chiyoko = true;
@@ -712,6 +722,9 @@ int main(int argc, char* argv[]) {
 	}
 	C2D_TextFontParse(&themeText[0], font[0], themeBuf, themes[0]);
     C2D_TextOptimize(&themeText[0]);
+	C2D_SpriteSheet splash = C2D_SpriteSheetLoad("romfs:/gfx/splash.t3x");
+	C2D_Image splash1 = C2D_SpriteSheetGetImage(splash, 0);
+	C2D_Image splash2 = C2D_SpriteSheetGetImage(splash, 1);
     if (!themeon) {
 		background_top = C2D_SpriteSheetLoad("romfs:/gfx/bg.t3x");
 		background_down = C2D_SpriteSheetLoad("romfs:/gfx/bottombg.t3x");
@@ -858,13 +871,9 @@ int main(int argc, char* argv[]) {
 	CWAV* bgm = cwavList[1].cwav;
 	CWAV* loginbgm = cwavList[2].cwav;
 	CWAV* menu = cwavList[3].cwav;
+	CWAV* splashb = cwavList[4].cwav;
 
-	if (bgm->numChannels == 2) {
-		cwavPlay(bgm, 0, 1);
-	} else {
-		cwavPlay(bgm, 0, -1);
-		
-	}
+
 	int textOffset = 0;
     int lastTouchY = -1;
 	float scrollVelocity = 0.0f;
@@ -874,7 +883,15 @@ int main(int argc, char* argv[]) {
 	int dragStartX = -1;
 	int dragStartY = -1;
 	const int SCROLL_THRESHOLD = 10;
-
+	bool splashPlayed = false;
+	u64 splashStartTime = 0;
+	bool splashDone = false;
+	float splashTimer = 0.0f;
+	float splashY = 240.0f;       // Start below screen
+	float splashHopTime = 0.0f;
+	const float splashHopDuration = 0.8f; // Total hop time
+	int transpar = 255;
+	int transpar2 = 0;
     while(aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
@@ -1072,7 +1089,57 @@ int main(int argc, char* argv[]) {
 
         
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        if (Scene == 1) {
+		if (Scene == 0) {
+			if (!splashDone) {
+				float dt = 1.0f / 60.0f;
+				splashTimer += dt;
+
+				if (!splashPlayed) {
+					cwavPlay(splashb, 0, 1);
+					splashPlayed = true;
+				}
+
+				// Only increment once here
+				if (splashHopTime < splashHopDuration) {
+					splashHopTime += dt;
+					splashY = easeHop(splashHopTime, 100.0f, 0.0f, splashHopDuration);
+				} else {
+					splashY = 0.0f;
+				}
+
+				if (splashTimer < 4.6f) {
+					C2D_TargetClear(top, C2D_Color32(0, 0, 0, 255));
+					C2D_SceneBegin(top);
+					C2D_DrawImageAt(splash1, 0.0f, splashY, 0.0f, NULL, 1.0f, 1.0f);
+					if (splashTimer > 1.2f) {
+						C2D_DrawImageAt(splash2, 0.0f, splashY, 0.0f, NULL, 1.0f, 1.0f);
+					}
+					if (splashTimer > 1.2f && transpar != 0) {
+						transpar -= 5;
+						C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, transpar));
+					}
+					if (splashTimer > 3.5f) {
+						if (transpar2 != 255){
+							transpar2 += 5;
+						}
+						C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, transpar2));
+					}
+
+					C2D_TargetClear(bottom, C2D_Color32(0, 0, 0, 255));
+					C2D_SceneBegin(bottom);
+				} else {
+					splashDone = true;
+				}
+			} else {
+				if (bgm->numChannels == 2) {
+					cwavPlay(bgm, 0, 1);
+				} else {
+					cwavPlay(bgm, 0, -1);
+					
+				}
+				Scene = 1;
+			}
+		} else if (Scene == 1) {
             timer += 0.2f ;
             if (timer > 20.0f) {
                 isScrolling = true;
@@ -1426,8 +1493,12 @@ int main(int argc, char* argv[]) {
 			} else if (timer < 120) {
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
-				Scene = 5;
+                endY = 0.0f;  
+				if (!youfuckedup) {		
+					Scene = 5;
+				} else {
+					Scene = 3;
+				}
 			} else if (timer < 209) {
 				timer += 1.0f;
 			}

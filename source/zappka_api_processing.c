@@ -26,6 +26,7 @@ const char* secrettotpglobal;
 extern FILE *fptr;
 extern char combinedText[128]; 
 extern C2D_TextBuf g_staticBuf;
+extern bool youfuckedup;
 extern C2D_Text g_staticText[100];
 bool activated = false;
 bool aktywacja_done = false;
@@ -1179,175 +1180,176 @@ void login_flow(const char *phone_number, const char *verification_code) {
 
     free(json_data);
 
-
-    json_t *response_root = json_loads(global_response.data, 0, NULL);
-    if (response_root) {
-        json_t *data = json_object_get(response_root, "data");
-        json_t *sign_in = json_object_get(data, "signIn");
-        json_t *custom_token_json = json_object_get(sign_in, "customToken");
-        id_tokenk = strdup(json_string_value(custom_token_json));
-
-        json_decref(response_root);
-    }
-	
-	curl_slist_free_all(headers);
-    headers = NULL; 
-	json_object_clear(root);
-	response_root = NULL;
-	
-	headers = curl_slist_append(headers, "Content-Type: application/json");
-
-	json_object_set_new(root, "token", json_string(id_tokenk));
-	json_object_set_new(root, "returnSecureToken", json_string("true"));
-	json_data = json_dumps(root, JSON_COMPACT);
-
-
-	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
-
-
-	response_root = json_loads(global_response.data, 0, NULL);
-	if (response_root) {
-		json_t *custom_token_json = json_object_get(response_root, "idToken");
-		json_t *refresh_token_json = json_object_get(response_root, "refreshToken");
-		if (custom_token_json && json_is_string(custom_token_json)) {
+	if (!youfuckedup) {
+		json_t *response_root = json_loads(global_response.data, 0, NULL);
+		if (response_root) {
+			json_t *data = json_object_get(response_root, "data");
+			json_t *sign_in = json_object_get(data, "signIn");
+			json_t *custom_token_json = json_object_get(sign_in, "customToken");
 			id_tokenk = strdup(json_string_value(custom_token_json));
-			refreshtoken = strdup(json_string_value(refresh_token_json));
-			printf("Extracted idToken: %s\n", id_tokenk);
-		} else {
-			fprintf(stderr, "Error: idToken not found.\n");
-			id_tokenk = NULL;
-		}
-		json_decref(response_root);
-	} 
 
-	if (id_tokenk) {
-		root = json_object();
-		json_object_set_new(root, "idToken", json_string(id_tokenk));
-		json_object_set_new(saveroot, "token", json_string(id_tokenk));
-		json_object_set_new(saveroot, "refresh", json_string(refreshtoken));
+			json_decref(response_root);
+		}
+		
+		curl_slist_free_all(headers);
+		headers = NULL; 
+		json_object_clear(root);
+		response_root = NULL;
+		
+		headers = curl_slist_append(headers, "Content-Type: application/json");
+
+		json_object_set_new(root, "token", json_string(id_tokenk));
+		json_object_set_new(root, "returnSecureToken", json_string("true"));
 		json_data = json_dumps(root, JSON_COMPACT);
 
-		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
+
+		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
+
+
+		response_root = json_loads(global_response.data, 0, NULL);
+		if (response_root) {
+			json_t *custom_token_json = json_object_get(response_root, "idToken");
+			json_t *refresh_token_json = json_object_get(response_root, "refreshToken");
+			if (custom_token_json && json_is_string(custom_token_json)) {
+				id_tokenk = strdup(json_string_value(custom_token_json));
+				refreshtoken = strdup(json_string_value(refresh_token_json));
+				printf("Extracted idToken: %s\n", id_tokenk);
+			} else {
+				fprintf(stderr, "Error: idToken not found.\n");
+				id_tokenk = NULL;
+			}
+			json_decref(response_root);
+		} 
+
+		if (id_tokenk) {
+			root = json_object();
+			json_object_set_new(root, "idToken", json_string(id_tokenk));
+			json_object_set_new(saveroot, "token", json_string(id_tokenk));
+			json_object_set_new(saveroot, "refresh", json_string(refreshtoken));
+			json_data = json_dumps(root, JSON_COMPACT);
+
+			refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
+		}
+
+		free(json_data);
+		curl_slist_free_all(headers);
+		headers = NULL; 
+		json_object_clear(root);
+		
+		headers = curl_slist_append(headers, "Content-Type: application/json");
+		headers = curl_slist_append(headers, "accept: application/json");
+		headers = curl_slist_append(headers, "user-agent: Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28");
+		snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", id_tokenk);
+		headers = curl_slist_append(headers, auth_header);
+
+		variables = json_object();
+		json_t *signInInput = json_object();
+
+		json_object_set_new(signInInput, "sessionId", json_string("65da013a-0d7d-3ad4-82bd-2bc15077d7f5"));
+		json_object_set_new(variables, "signInInput", signInInput);
+
+		json_object_set_new(root, "operationName", json_string("SignIn"));
+		json_object_set_new(root, "query", json_string("mutation SignIn($signInInput: SignInInput!) { signIn(signInInput: $signInInput) { profile { __typename ...UserProfileParts } } }  fragment UserProfileParts on UserProfile { email gender }"));
+		json_object_set_new(root, "variables", variables);
+		json_data = json_dumps(root, JSON_COMPACT);
+
+		
+		refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
+
+		json_t *verify_response = json_loads(global_response.data, 0, NULL);
+		json_t *verify_data = json_object_get(verify_response, "data");
+		json_t *verify_token = json_object_get(verify_data, "verifyCustomToken");
+		json_t *id_token_json_resp = json_object_get(verify_token, "idToken");
+		id_tokenk = json_string_value(id_token_json_resp);
+
+		free(json_data);
+		json_object_clear(root);
+
+
+		json_object_set_new(root, "operationName", json_string("QrCode"));
+		json_object_set_new(root, "query", json_string("query QrCode { qrCode { loyalSecret paySecret ployId } }"));
+		json_object_set_new(root, "variables", json_object());
+		
+		json_data = json_dumps(root, JSON_COMPACT);
+		refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
+		
+		response_root = json_loads(global_response.data, 0, NULL);
+		json_t *data = json_object_get(response_root, "data");
+		json_t *qrCode = json_object_get(data, "qrCode");
+		json_t *ployId = json_object_get(qrCode, "ployId");
+		json_t *loyalSecret = json_object_get(qrCode, "loyalSecret");
+		json_t *paymentSecret = json_object_get(qrCode, "paySecret");
+		char *user_id = strdup(json_string_value(ployId));
+		char *hex_secret = strdup(json_string_value(loyalSecret));
+		char *pay_secret = strdup(json_string_value(paymentSecret));
+		
+		
+		userajd = user_id;
+		json_object_set_new(saveroot, "user_id", json_string(user_id));
+		json_object_set_new(saveroot, "hex_secret", json_string(hex_secret));
+		json_object_set_new(saveroot, "pay_secret", json_string(pay_secret));
+		
+		
+		
+		free(json_data);
+		json_object_clear(root);
+
+		json_object_set_new(root, "operationName", json_string("PaymentCards"));
+		json_object_set_new(root, "query", json_string("query PaymentCards { paymentCards { paymentCards { id isDefault lastFourDigits } } }"));
+		json_object_set_new(root, "variables", json_object());
+		
+		json_data = json_dumps(root, JSON_COMPACT);
+		refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
+		response_root = json_loads(global_response.data, 0, NULL);
+
+		json_t *datas = json_object_get(response_root, "data");
+		json_t *paymentCardsWrapper = json_object_get(datas, "paymentCards");
+		json_t *paymentCards = json_object_get(paymentCardsWrapper, "paymentCards");
+
+		if (json_is_array(paymentCards) && json_array_size(paymentCards) > 0) {
+			secrettotpglobal = pay_secret;
+			json_object_set_new(saveroot, "has_nano", json_string("yes"));
+			usernan = "yes";
+		} else {
+			secrettotpglobal = hex_secret;
+			json_object_set_new(saveroot, "has_nano", json_string("no"));
+			usernan = "no";
+		}
+
+		json_object_clear(root);
+		
+		
+		json_object_set_new(root, "operationName", json_string("GetProfile"));
+		json_object_set_new(root, "query", json_string("query GetProfile { profile { id firstName birthDate phoneNumber { countryCode nationalNumber } email } }"));
+		json_object_set_new(root, "variables", json_object());
+		
+		json_data = json_dumps(root, JSON_COMPACT);
+		refresh_data("https://super-account.spapp.zabka.pl/", json_data, headers);
+		response_root = json_loads(global_response.data, 0, NULL);
+		json_t *nejmdata = json_object_get(response_root, "data");
+		json_t *profajl = json_object_get(nejmdata, "profile");
+		json_t *nejm = json_object_get(profajl, "firstName");
+		char *nejmjson = strdup(json_string_value(nejm));
+		json_object_set_new(saveroot, "name", json_string(nejmjson));
+		char *save_data = json_dumps(saveroot, JSON_COMPACT);
+
+		
+	  
+		free(json_data);
+		json_decref(root);
+		json_decref(response_root);
+		fclose(fptr);
+		FILE *log_file = fopen("/3ds/data.json", "w");
+		fprintf(log_file, save_data);
+		fclose(log_file);
+		json_decref(saveroot);
+		json_t *jsonfl;
+		jsonfl = json_load_file("/3ds/data.json", 0, NULL);
+		json_t *ajdentokenen = json_object_get(jsonfl, "token");
+		id_tokenk = json_string_value(ajdentokenen);
+		json_t *nejmen = json_object_get(jsonfl, "name");
+		nejmenmachen = json_string_value(nejmen);
+		snprintf(combinedText, sizeof(combinedText), "Witaj %s!", nejmenmachen);
+		C2D_TextFontParse(&g_staticText[7], font[0], g_staticBuf, combinedText);
 	}
-
-	free(json_data);
-	curl_slist_free_all(headers);
-    headers = NULL; 
-	json_object_clear(root);
-	
-	headers = curl_slist_append(headers, "Content-Type: application/json");
-    headers = curl_slist_append(headers, "accept: application/json");
-    headers = curl_slist_append(headers, "user-agent: Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28");
-    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", id_tokenk);
-    headers = curl_slist_append(headers, auth_header);
-
-    variables = json_object();
-    json_t *signInInput = json_object();
-
-    json_object_set_new(signInInput, "sessionId", json_string("65da013a-0d7d-3ad4-82bd-2bc15077d7f5"));
-    json_object_set_new(variables, "signInInput", signInInput);
-
-    json_object_set_new(root, "operationName", json_string("SignIn"));
-    json_object_set_new(root, "query", json_string("mutation SignIn($signInInput: SignInInput!) { signIn(signInInput: $signInInput) { profile { __typename ...UserProfileParts } } }  fragment UserProfileParts on UserProfile { email gender }"));
-    json_object_set_new(root, "variables", variables);
-	json_data = json_dumps(root, JSON_COMPACT);
-
-	
-	refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
-
-    json_t *verify_response = json_loads(global_response.data, 0, NULL);
-    json_t *verify_data = json_object_get(verify_response, "data");
-    json_t *verify_token = json_object_get(verify_data, "verifyCustomToken");
-    json_t *id_token_json_resp = json_object_get(verify_token, "idToken");
-    id_tokenk = json_string_value(id_token_json_resp);
-
-    free(json_data);
-	json_object_clear(root);
-
-
-    json_object_set_new(root, "operationName", json_string("QrCode"));
-    json_object_set_new(root, "query", json_string("query QrCode { qrCode { loyalSecret paySecret ployId } }"));
-    json_object_set_new(root, "variables", json_object());
-	
-    json_data = json_dumps(root, JSON_COMPACT);
-    refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
-	
-	response_root = json_loads(global_response.data, 0, NULL);
-    json_t *data = json_object_get(response_root, "data");
-    json_t *qrCode = json_object_get(data, "qrCode");
-    json_t *ployId = json_object_get(qrCode, "ployId");
-	json_t *loyalSecret = json_object_get(qrCode, "loyalSecret");
-	json_t *paymentSecret = json_object_get(qrCode, "paySecret");
-    char *user_id = strdup(json_string_value(ployId));
-	char *hex_secret = strdup(json_string_value(loyalSecret));
-	char *pay_secret = strdup(json_string_value(paymentSecret));
-	
-	
-	userajd = user_id;
-	json_object_set_new(saveroot, "user_id", json_string(user_id));
-	json_object_set_new(saveroot, "hex_secret", json_string(hex_secret));
-	json_object_set_new(saveroot, "pay_secret", json_string(pay_secret));
-	
-	
-	
-    free(json_data);
-	json_object_clear(root);
-
-	json_object_set_new(root, "operationName", json_string("PaymentCards"));
-    json_object_set_new(root, "query", json_string("query PaymentCards { paymentCards { paymentCards { id isDefault lastFourDigits } } }"));
-    json_object_set_new(root, "variables", json_object());
-	
-    json_data = json_dumps(root, JSON_COMPACT);
-    refresh_data("https://api.spapp.zabka.pl/", json_data, headers);
-	response_root = json_loads(global_response.data, 0, NULL);
-
-    json_t *datas = json_object_get(response_root, "data");
-    json_t *paymentCardsWrapper = json_object_get(datas, "paymentCards");
-    json_t *paymentCards = json_object_get(paymentCardsWrapper, "paymentCards");
-
-    if (json_is_array(paymentCards) && json_array_size(paymentCards) > 0) {
-        secrettotpglobal = pay_secret;
-		json_object_set_new(saveroot, "has_nano", json_string("yes"));
-		usernan = "yes";
-    } else {
-        secrettotpglobal = hex_secret;
-		json_object_set_new(saveroot, "has_nano", json_string("no"));
-		usernan = "no";
-    }
-
-    json_object_clear(root);
-	
-	
-    json_object_set_new(root, "operationName", json_string("GetProfile"));
-    json_object_set_new(root, "query", json_string("query GetProfile { profile { id firstName birthDate phoneNumber { countryCode nationalNumber } email } }"));
-    json_object_set_new(root, "variables", json_object());
-	
-    json_data = json_dumps(root, JSON_COMPACT);
-    refresh_data("https://super-account.spapp.zabka.pl/", json_data, headers);
-	response_root = json_loads(global_response.data, 0, NULL);
-	json_t *nejmdata = json_object_get(response_root, "data");
-	json_t *profajl = json_object_get(nejmdata, "profile");
-	json_t *nejm = json_object_get(profajl, "firstName");
-	char *nejmjson = strdup(json_string_value(nejm));
-	json_object_set_new(saveroot, "name", json_string(nejmjson));
-	char *save_data = json_dumps(saveroot, JSON_COMPACT);
-
-	
-  
-    free(json_data);
-    json_decref(root);
-	json_decref(response_root);
-	fclose(fptr);
-	FILE *log_file = fopen("/3ds/data.json", "w");
-	fprintf(log_file, save_data);
-	fclose(log_file);
-	json_decref(saveroot);
-	json_t *jsonfl;
-	jsonfl = json_load_file("/3ds/data.json", 0, NULL);
-	json_t *ajdentokenen = json_object_get(jsonfl, "token");
-	id_tokenk = json_string_value(ajdentokenen);
-	json_t *nejmen = json_object_get(jsonfl, "name");
-	nejmenmachen = json_string_value(nejmen);
-	snprintf(combinedText, sizeof(combinedText), "Witaj %s!", nejmenmachen);
-	C2D_TextFontParse(&g_staticText[7], font[0], g_staticBuf, combinedText);
 }

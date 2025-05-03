@@ -5,10 +5,11 @@ const char* fileList[] = {
 	"romfs:/bgm.bcwav",
 	"romfs:/login.bcwav",
 	"romfs:/menu.bcwav",
+	"romfs:/splash.bcwav",
 };
 
 const u8 maxSPlayList[] = {
-    2, 2, 2, 14,
+    2, 2, 2, 14, 1,
 };
 
 const char* bit_str[] = {
