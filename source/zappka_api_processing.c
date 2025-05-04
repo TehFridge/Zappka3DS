@@ -1134,7 +1134,7 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 				}
 			}
 			getcard(id_tokenk, refreshtoken);
-
+			getzappsy_startup(id_tokenk, refreshtoken);
 			curl_slist_free_all(headers);
 			headers = NULL;
 		} else {
@@ -1351,5 +1351,6 @@ void login_flow(const char *phone_number, const char *verification_code) {
 		nejmenmachen = json_string_value(nejmen);
 		snprintf(combinedText, sizeof(combinedText), "Witaj %s!", nejmenmachen);
 		C2D_TextFontParse(&g_staticText[7], font[0], g_staticBuf, combinedText);
+		getzappsy_startup(id_tokenk, refreshtoken);
 	}
 }

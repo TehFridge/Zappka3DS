@@ -36,6 +36,7 @@ void process_category();
 void aktywujkurwe();
 void process_ofertamachen();
 void process_ployoffers();
+void getcard(const char* mejntoken, const char* refrenentokenenkurwen);
 void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen);
 void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen);
 void updateploy(const char* mejntoken, const char* refrenentokenenkurwen);

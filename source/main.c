@@ -33,9 +33,9 @@
 
 
 size_t totalsajz = 0;
-
+bool day = true;
 bool cpu_debug = false;
-bool citra_machen = true;
+bool citra_machen = false;
 uint8_t* obrazek = NULL;
 char *zabkazonefeed = NULL;
 extern bool json_done;
@@ -562,7 +562,7 @@ void wyloguj() {
 		cwavPlay(sfx, 0, -1);
 	}
 	CWAV* bgm = cwavList[1].cwav;
-	CWAV* menu = cwavList[3].cwav;
+	CWAV* menu = day ? cwavList[3].cwav : cwavList[5].cwav;
 	cwavStop(menu, 0, 1);
 	if (bgm->numChannels == 2) {
 		cwavPlay(bgm, 0, 1);
@@ -611,28 +611,36 @@ int main(int argc, char* argv[]) {
 		json_t *refren = json_object_get(jsonfl, "refresh");
 		json_t *ajdentokenen = json_object_get(jsonfl, "token");
 		json_t *has_nano = json_object_get(jsonfl, "has_nano");
-		nejmenmachen = json_string_value(nejmen);
-		refreshtoken = json_string_value(refren);
-		id_tokenk = json_string_value(ajdentokenen);
-		userajd = json_string_value(tempajd);
-		usernan = json_string_value(has_nano);
-		if (strcmp(usernan, "no") == 0) {
-			secrettotpglobal = json_string_value(nwmsecret);
+		if (!tempajd || !nwmsecret || !nwmsecretnano || !nejmen || !has_nano) {
+			isLogged = false;
+			json_decref(jsonfl);
+			remove("/3ds/data.json");
 		} else {
-			secrettotpglobal = json_string_value(nwmsecretnano);
+			refreshtoken = json_string_value(refren);
+			id_tokenk = json_string_value(ajdentokenen);
+			nejmenmachen = json_string_value(nejmen);
+
+			userajd = json_string_value(tempajd);
+			usernan = json_string_value(has_nano);
+			if (strcmp(usernan, "no") == 0) {
+				secrettotpglobal = json_string_value(nwmsecret);
+			} else {
+				secrettotpglobal = json_string_value(nwmsecretnano);
+			}
+
+			snprintf(combinedText, sizeof(combinedText), "Witaj %s!", nejmenmachen);
+			int otpen = compute_magic_number(secrettotpglobal);
+			doBasicDemo(&qrImage, otpen, userajd);
+			if (!citra_machen){
+				if (is_network_connected()) {
+					sprawdzajtokenasa(id_tokenk, refreshtoken);
+				} else {
+				}
+			} else {
+				sprawdzajtokenasa(id_tokenk, refreshtoken);
+			}
 		}
 
-		snprintf(combinedText, sizeof(combinedText), "Witaj %s!", nejmenmachen);
-		int otpen = compute_magic_number(secrettotpglobal);
-		doBasicDemo(&qrImage, otpen, userajd);
-		if (!citra_machen){
-			if (is_network_connected()) {
-				sprawdzajtokenasa(id_tokenk, refreshtoken);
-			} else {
-			}
-		} else {
-			sprawdzajtokenasa(id_tokenk, refreshtoken);
-		}
 	} else {
 		isLogged = false;
 	}
@@ -668,6 +676,19 @@ int main(int argc, char* argv[]) {
 	int maxThemes;
 	u32 themeoutColor;
 	u32 themeBaseColor;
+    time_t rawtime;
+    struct tm *timeinfo;
+
+    // Get current time in seconds since epoch
+    rawtime = time(NULL);
+
+    // Convert to local time
+    timeinfo = localtime(&rawtime);
+	if (timeinfo->tm_hour > 18 || timeinfo->tm_hour < 6) {
+		day = false;
+	} else {
+		day = true;
+	}
 	if (access("/3ds/zappkathemes/current_theme.json", F_OK) == 0) {
 		json_t *rootenmach = json_load_file("/3ds/zappkathemes/current_theme.json", 0, NULL);
 		json_t *currentthemene = json_object_get(rootenmach, "currenttheme");
@@ -870,9 +891,13 @@ int main(int argc, char* argv[]) {
     C2D_TextOptimize(&g_staticText[16]);
 	CWAV* bgm = cwavList[1].cwav;
 	CWAV* loginbgm = cwavList[2].cwav;
-	CWAV* menu = cwavList[3].cwav;
+	CWAV* menu = day ? cwavList[3].cwav : cwavList[5].cwav;
 	CWAV* splashb = cwavList[4].cwav;
-
+	if (!day) {
+		menu->volume = 0.4f;
+	} else {
+		menu->volume = 0.6f;
+	}
 
 	int textOffset = 0;
     int lastTouchY = -1;
@@ -2082,7 +2107,7 @@ int main(int argc, char* argv[]) {
 			if (timer > 120) {
 				if (json_done) {
 					if (!ofertanow) {
-						for (int i = 0; i < tileCount + 1; i++) {
+						for (int i = 0; i < tileCount; i++) {
 							float buttonX = 5.0f + (i * 142.0f) - textOffset;
 							float buttonY = currentY + 25.0f;
 							buttonsy[i + 5].x = buttonX;
@@ -2267,7 +2292,7 @@ int main(int argc, char* argv[]) {
 			if (timer < 120) {
 				if (json_done) {
 					if (!ofertanow) {
-						for (int i = 0; i < tileCount + 1; i++) {
+						for (int i = 0; i < tileCount; i++) {
 							float buttonX = 5.0f + (i * 142.0f) - textOffset;
 							float buttonY = currentY + 25.0f;
 							buttonsy[i + 5].x = buttonX;
