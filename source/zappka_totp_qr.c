@@ -68,7 +68,15 @@ int compute_magic_number(const char *secretHex) {
 	int extractedValue = ctotp(outputBytes, offset);
 	int extractedValue2 = (ctotp(outputBytes, offset) & JAVA_INT_MAX);
     int magicNumber = (ctotp(outputBytes, offset) & JAVA_INT_MAX) % 1000000;
-
+	C2D_TextBufClear(totpBuf);
+	char totptext[64];
+	snprintf(totptext, sizeof(totptext), "TOTP: %06d", magicNumber);
+	C2D_TextParse(&g_totpText[0], totpBuf, totptext);
+	C2D_TextOptimize(&g_totpText[0]);
+	char tstext[64];
+	snprintf(tstext, sizeof(tstext), "TS: %lld", time(NULL) - 3600);
+	C2D_TextParse(&g_totpText[1], totpBuf, tstext);
+	C2D_TextOptimize(&g_totpText[1]);
     free(secret);
     return (int)(magicNumber);
 }

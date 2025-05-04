@@ -10,6 +10,8 @@ typedef struct {
     C3D_Tex *buff;
     C3D_Tex *backbuff;
 } QRTex;
+extern C2D_TextBuf totpBuf;
+extern C2D_Text g_totpText[5];
 extern QRTex qr;
 extern C2D_Image qrImage;
 void qr_swap_buf(QRTex *qr);

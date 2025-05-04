@@ -50,6 +50,7 @@ const char* kurwacursor;
 char ploy_ids_bo_kurwa_reload[100][50];
 char typy_bo_kurwa_reload[100][50];
 const char* aftermachenkurw;
+
 void removeTrailingNewline(char* str) {
     size_t len = strlen(str);
     if (len > 0 && str[len - 1] == '\n') {
@@ -808,7 +809,7 @@ void process_ofertamachen() {
     C2D_TextFontParse(&g_kuponText[1], font[0], kupon_text_Buf, cenastr);
     C2D_TextOptimize(&g_kuponText[1]);
 	C2D_TextGetDimensions(&g_kuponText[0], 0.6f, 0.6f, &text_w, &text_h);
-
+	max_scroll = text_h;
     json_decref(response_root);
 
     przycskmachen = true;

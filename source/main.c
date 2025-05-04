@@ -31,6 +31,9 @@
 #define SOC_ALIGN       0x1000
 #define SOC_BUFFERSIZE  0x300000
 
+C2D_TextBuf totpBuf = NULL;
+C2D_Text g_totpText[5];  // Just declared, will be initialized when needed
+extern bool logplz;
 extern float text_w, text_h;
 extern float max_scroll;
 size_t totalsajz = 0;
@@ -600,6 +603,7 @@ int main(int argc, char* argv[]) {
 	if ((ret = socInit(SOC_buffer, SOC_BUFFERSIZE)) != 0) {
     	printf("socInit: 0x%08X\n", (unsigned int)ret);
 	}
+	totpBuf = C2D_TextBufNew(128);
 	C2D_TextBuf memBuf = C2D_TextBufNew(128);
 	C2D_Text memtext[100];
 	start_request_thread();
@@ -1004,7 +1008,12 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-
+		if (kDown & KEY_L) {
+			if (Scene == 0){
+				cpu_debug = true;
+				logplz = true;
+			}
+		}
         if (kDown & KEY_A) {
             if (Scene == 1 & timer > 40) {
 				
@@ -2608,6 +2617,8 @@ int main(int argc, char* argv[]) {
 			C2D_TextParse(&memtext[1], memBuf, memeText);
 			C2D_TextOptimize(&memtext[1]);
 			C2D_DrawText(&memtext[1], C2D_AlignLeft | C2D_WithColor, 20, 55, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[0], C2D_AlignLeft | C2D_WithColor, 290, 20, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[1], C2D_AlignLeft | C2D_WithColor, 290, 35, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 		}
 
 		
