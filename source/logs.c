@@ -1,5 +1,6 @@
 #include "logs.h"
 
+bool logplz = false;
 static FILE *log_file = NULL;
 
 
@@ -13,14 +14,15 @@ u64 get_free_mem() {
 }
 void log_to_file(const char *format, ...) {
     if (!log_file) return;
+	if (logplz) {
+		va_list args;
+		va_start(args, format);
+		vfprintf(log_file, format, args);
+		fprintf(log_file, "\n");
+		va_end(args);
 
-    va_list args;
-    va_start(args, format);
-    vfprintf(log_file, format, args);
-    fprintf(log_file, "\n");
-    va_end(args);
-
-    fflush(log_file);
+		fflush(log_file);
+	}
 }
 
 void close_logger() {

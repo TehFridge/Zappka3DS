@@ -1,11 +1,14 @@
 #include "zappka_api_processing.h"
 
+float text_w, text_h;
+float max_scroll;
 extern float timer;
 extern int Scene;
 extern float startY;
 extern float elapsed;
 extern float endY;
 extern Button buttonsy[100];
+bool readingoferta = false;
 bool offermachen = false;
 bool categoryornah = false;
 extern bool obrazekdone;
@@ -287,15 +290,16 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
 
 			log_to_file("Tile %zu: %s", index, tileNames[tileCount + kurwavar]);
 			log_to_file("Button %zu", tileCount + kurwavar);
-
+			max_scroll += buttonsy[5 + tileCount].width + 8;
 			tileCount++;
-
+		
 		}
 	}
 	if (cursor_here) {
 		buttonsy[tileCount + kurwavar] = (Button){0, 0, 134, 179, more_button, more_button, false, 14, 15, 15, 15, 15, 1.0f, load_m_prom};
+		max_scroll += buttonsy[tileCount + kurwavar].width + 8;
 	}
-
+	max_scroll -= 134;
 	tileCount = tileCount + kurwavar; 
     json_decref(response_root);
 
@@ -519,6 +523,7 @@ void process_kupony() {
         tileCount = 0;
         size_t index;
         json_t *tile;
+		max_scroll = 0;
 		json_array_foreach(tiles, index, tile) {
 			if (tileCount >= json_array_size(tiles)) break;
 
@@ -558,13 +563,13 @@ void process_kupony() {
 						printf("\nTile %zu: %s", index, tileNames[tileCount]);
 						log_to_file("Button %zu", 5 + tileCount);
 						printf("\nButton %zu", 5 + tileCount);
-
+						max_scroll += buttonsy[5 + tileCount].width + 8;
 						tileCount++;
 					}
 				}
 			}
 		}
-
+		max_scroll -= 134;
         json_decref(response_root);
 		zonefeeddone = true;
 		loadingshit = true;
@@ -601,7 +606,7 @@ void process_category() {
 		tileCount = 0;
 		size_t index;
 		json_t *tile;
-		
+		max_scroll = 0;
 		json_array_foreach(levels, index, tile) {
 			if (tileCount >= json_array_size(levels)) break;
 
@@ -636,7 +641,7 @@ void process_category() {
 
 				log_to_file("Tile %zu: %s", index, tileNames[tileCount]);
 				log_to_file("Button %zu", 5 + tileCount);
-
+				max_scroll += buttonsy[5 + tileCount].width + 8;
 				tileCount++;
 			}
 		}
@@ -658,7 +663,7 @@ void process_category() {
 		tileCount = 0;
 		size_t index;
 		json_t *tile;
-		
+		max_scroll = 0;
 		json_array_foreach(ployOffers, index, tile) {
 			if (tileCount >= json_array_size(ployOffers)) break;
 			json_t *first_section = json_array_get(ployOffers, index);
@@ -710,16 +715,18 @@ void process_category() {
 
 				log_to_file("Tile %zu: %s", index, tileNames[tileCount]);
 				log_to_file("Button %zu", 5 + tileCount);
-
+				max_scroll += buttonsy[5 + tileCount].width + 8;
 				tileCount++;
 				kurwavar++;
 			}
 		}
 		if (cursor_here){
 			buttonsy[kurwavar + 1] = (Button){0, 0, 134, 179, more_button, more_button, false, 14, 15, 15, 15, 15, 1.0f, load_m_prom}; 
+			max_scroll += buttonsy[kurwavar + 1].width + 8;
 		}
 		tileCount = tileCount + 5;
 	}
+	max_scroll -= 134;
     json_decref(response_root);
 
     przycskmachen = true;
@@ -800,7 +807,7 @@ void process_ofertamachen() {
     C2D_TextOptimize(&g_kuponText[0]);
     C2D_TextFontParse(&g_kuponText[1], font[0], kupon_text_Buf, cenastr);
     C2D_TextOptimize(&g_kuponText[1]);
-
+	C2D_TextGetDimensions(&g_kuponText[0], 0.6f, 0.6f, &text_w, &text_h);
 
     json_decref(response_root);
 
@@ -858,7 +865,7 @@ void process_ployoffers() {
     tileCount = 0;
     size_t index;
     json_t *tile;
-    
+    max_scroll = 0;
     json_array_foreach(ployOffers, index, tile) {
         if (tileCount >= json_array_size(ployOffers)) break;
 
@@ -896,11 +903,11 @@ void process_ployoffers() {
 
             log_to_file("Tile %zu: %s", index, tileNames[tileCount]);
             log_to_file("Button %zu", 5 + tileCount);
-
+			max_scroll += buttonsy[5 + tileCount].width + 8;
             tileCount++;
         }
     }
-
+	max_scroll -= 134;
     json_decref(response_root);
 
     przycskmachen = true;

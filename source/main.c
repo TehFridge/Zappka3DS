@@ -31,8 +31,10 @@
 #define SOC_ALIGN       0x1000
 #define SOC_BUFFERSIZE  0x300000
 
-
+extern float text_w, text_h;
+extern float max_scroll;
 size_t totalsajz = 0;
+extern bool readingoferta;
 bool day = true;
 bool cpu_debug = false;
 bool citra_machen = false;
@@ -47,6 +49,7 @@ bool internet_available = false;
 static Thread internet_thread;
 static bool internet_thread_running = true;
 char combinedText[128]; 
+float speed = 20.0f; // High speed for fast reset
 int selectioncodelol;
 extern Button buttonsy[100];
 int selectionthemelol;
@@ -741,12 +744,15 @@ int main(int argc, char* argv[]) {
 			themeBaseColor = C2D_Color32(r2, g2, b2, a2);
 		}
 	}
+	C2D_SpriteSheet scrollbarsheet;
+	C2D_Image scrollbar;
 	C2D_TextFontParse(&themeText[0], font[0], themeBuf, themes[0]);
     C2D_TextOptimize(&themeText[0]);
 	C2D_SpriteSheet splash = C2D_SpriteSheetLoad("romfs:/gfx/splash.t3x");
 	C2D_Image splash1 = C2D_SpriteSheetGetImage(splash, 0);
 	C2D_Image splash2 = C2D_SpriteSheetGetImage(splash, 1);
     if (!themeon) {
+		scrollbarsheet = C2D_SpriteSheetLoad("romfs:/gfx/usestylus.t3x");
 		background_top = C2D_SpriteSheetLoad("romfs:/gfx/bg.t3x");
 		background_down = C2D_SpriteSheetLoad("romfs:/gfx/bottombg.t3x");
 		logo = C2D_SpriteSheetLoad("romfs:/gfx/logo.t3x");
@@ -766,6 +772,7 @@ int main(int argc, char* argv[]) {
 		more_b = C2D_SpriteSheetLoad("romfs:/gfx/more.t3x");
 		themename_border = C2D_SpriteSheetLoad("romfs:/gfx/themename_border.t3x");
 		
+		scrollbar = C2D_SpriteSheetGetImage(scrollbarsheet, 0);
 		bgtop = C2D_SpriteSheetGetImage(background_top, 0);
 		bgdown = C2D_SpriteSheetGetImage(background_down, 0);
 		logo3ds = C2D_SpriteSheetGetImage(logo, 0);
@@ -946,14 +953,16 @@ int main(int argc, char* argv[]) {
 				}
 
 				if (isDragging) {
+					int currentTouch = readingoferta ? touch.py : touch.px;
 					if (lastTouchY >= 0) {
-						int delta = touch.px - lastTouchY;
+						int delta = currentTouch - lastTouchY;
 						textOffset -= delta;
 						if (textOffset < 0) textOffset = 0;
+						if (textOffset > max_scroll) textOffset = max_scroll;
 
 						scrollVelocity = (float)delta;
 					}
-					lastTouchY = touch.px;
+					lastTouchY = currentTouch;
 					prevTouchX = touch.px;
 				} else {
 					for (int i = 0; i < 100; i++) {
@@ -986,6 +995,7 @@ int main(int argc, char* argv[]) {
 		if (!(kHeld & KEY_TOUCH) && fabs(scrollVelocity) > 0.1f) {
 			textOffset -= scrollVelocity;
 			if (textOffset < 0) textOffset = 0;
+			if (textOffset > max_scroll) textOffset = max_scroll;
 
 			scrollVelocity *= friction;
 			if (fabs(scrollVelocity) < 0.1f) {
@@ -1073,6 +1083,7 @@ int main(int argc, char* argv[]) {
                 endY = -400.0f;   
                 elapsed = 0;
 				Scene = 15;
+				readingoferta = false;
             } 
             if (Scene == 16 & timer > 40) {
 				przycskmachen = true;
@@ -2020,12 +2031,15 @@ int main(int argc, char* argv[]) {
 						
 					}
 					if (timer > 120) {
+						
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
 						buttonsy[4].x = 40; 
-						buttonsy[4].y = -currentY + 140;
+						buttonsy[4].y = -currentY + 70 + text_h - textOffset;
 					}
                     elapsed += deltaTime;
-                }
+                } else {
+					buttonsy[4].y = 70 + text_h - textOffset;
+				}
             }
                 
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
@@ -2123,21 +2137,22 @@ int main(int argc, char* argv[]) {
 					} else {
 						float textX = 160.0f;
 						float textY = currentY + 25.0f + 30.0f;
+						C2D_DrawImageAt(scrollbar, -currentY + 287.0f, 12.5f, 0.0f, NULL, 1.0f, 1.0f);
 						if (!themeon){
-							drawShadowedTextWrapped(&g_kuponText[0], textX, textY, 0.5f, 0.6f, 0.6f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
-							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+							drawShadowedTextWrapped(&g_kuponText[0], textX, textY - textOffset, 0.5f, 0.6f, 0.6f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f - textOffset, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 						} else {
-							drawShadowedTextWrapped(&g_kuponText[0], textX, textY, 0.5f, 0.6f, 0.6f, themeBaseColor, themeoutColor);
-							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
+							drawShadowedTextWrapped(&g_kuponText[0], textX, textY - textOffset, 0.5f, 0.6f, 0.6f, themeBaseColor, themeoutColor);
+							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f - textOffset, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
 						}
 						if (!canredeem) {
 							 C2D_DrawImageAt(za_malo, 40.0f, -currentY + 140, 0.0f, NULL, 1.0f, 1.0f);
 						}
 						if (aktywacja_done) {
 							if (!themeon){
-								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 100.0f, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 50.0f + text_h - textOffset, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 							} else {
-								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 100.0f, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
+								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 50.0f + text_h - textOffset, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
 							}
 						}
 					}
@@ -2167,6 +2182,8 @@ int main(int argc, char* argv[]) {
 							}
 						} else {
 							if (requestdone) {
+								textOffset = 0;
+								readingoferta = true;
 								process_ofertamachen();
 								touchoferta = false;
 								log_to_file("dupa");
@@ -2215,7 +2232,7 @@ int main(int argc, char* argv[]) {
 						buttonsy[2].x = -currentY + 140; 
 						buttonsy[3].x = -currentY + 140; 
 						buttonsy[4].x = 40; 
-						buttonsy[4].y = -currentY + 140; 
+						buttonsy[4].y = -currentY + 70 + text_h - textOffset;
 						
 					}
 					if (timer > 120) {
@@ -2308,21 +2325,26 @@ int main(int argc, char* argv[]) {
 					} else {
 						float textX = 160.0f;
 						float textY = currentY + 25.0f + 30.0f;
+						C2D_DrawImageAt(scrollbar, -currentY + 287.0f, 12.5f, 0.0f, NULL, 1.0f, 1.0f);
 						if (!themeon){
-							drawShadowedTextWrapped(&g_kuponText[0], textX, textY, 0.5f, 0.6f, 0.6f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
-							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+							drawShadowedTextWrapped(&g_kuponText[0], textX, textY - textOffset, 0.5f, 0.6f, 0.6f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f - textOffset, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 						} else {
-							drawShadowedTextWrapped(&g_kuponText[0], textX, textY, 0.5f, 0.6f, 0.6f, themeBaseColor, themeoutColor);
-							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
+							drawShadowedTextWrapped(&g_kuponText[0], textX, textY - textOffset, 0.5f, 0.6f, 0.6f, themeBaseColor, themeoutColor);
+							drawShadowedTextWrapped(&g_kuponText[1], textX, textY - 50.0f - textOffset, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
+						}
+						if (textOffset > 0) {
+							textOffset -= speed * 0.4f;
+							if (textOffset < 0) textOffset = 0;
 						}
 						if (!canredeem) {
 							 C2D_DrawImageAt(za_malo, 40.0f, -currentY + 140, 0.0f, NULL, 1.0f, 1.0f);
 						}
 						if (aktywacja_done) {
 							if (!themeon){
-								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 100.0f, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 50.0f + text_h - textOffset, 0.5f, 1.5f, 1.5f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 							} else {
-								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 100.0f, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
+								drawShadowedTextWrapped(&g_staticText[13], textX, textY + 50.0f + text_h - textOffset, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
 							}
 						}
 					}

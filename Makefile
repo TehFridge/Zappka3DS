@@ -31,7 +31,7 @@ include $(DEVKITARM)/3ds_rules
 #     - icon.png
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
-TARGET		:=	Zappka3DS_REWRiTE
+TARGET		:=	Zappka3DS_FinalBeta2
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
