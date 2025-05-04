@@ -809,7 +809,8 @@ int main(int argc, char* argv[]) {
 		#define LOAD_SPRITE(var, filename) \
 			snprintf(fullpath, sizeof(fullpath), "/3ds/zappkathemes/%s/%s", path, filename); \
 			var = C2D_SpriteSheetLoad(fullpath);
-
+			
+		LOAD_SPRITE(scrollbarsheet, "usestylus.t3x");
 		LOAD_SPRITE(background_top, "bg.t3x");
 		LOAD_SPRITE(background_down, "bottombg.t3x");
 		LOAD_SPRITE(logo, "logo.t3x");
@@ -829,7 +830,7 @@ int main(int argc, char* argv[]) {
 		LOAD_SPRITE(more_b, "more.t3x");
 		LOAD_SPRITE(themename_border, "themename_border.t3x");
 
-		
+		scrollbar = C2D_SpriteSheetGetImage(scrollbarsheet, 0);
 		bgtop = C2D_SpriteSheetGetImage(background_top, 0);
 		bgdown = C2D_SpriteSheetGetImage(background_down, 0);
 		logo3ds = C2D_SpriteSheetGetImage(logo, 0);
