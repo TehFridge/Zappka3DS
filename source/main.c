@@ -2375,7 +2375,7 @@ int main(int argc, char* argv[]) {
 							if (textOffset < 0) textOffset = 0;
 						}
 						if (!canredeem) {
-							 C2D_DrawImageAt(za_malo, 40.0f, -currentY + 140, 0.0f, NULL, 1.0f, 1.0f);
+							 C2D_DrawImageAt(za_malo, 40.0f, -currentY + 140 + text_h, 0.0f, NULL, 1.0f, 1.0f);
 						}
 						if (aktywacja_done) {
 							if (!themeon){
