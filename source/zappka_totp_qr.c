@@ -7,6 +7,8 @@
 QRTex qr; 
 C2D_Image qrImage;
 const char *usernan;
+long long onl;
+long long last_loc;
 void qr_swap_buf(QRTex *qr) {
     C3D_Tex *tmp;
     tmp = qr->buff;
@@ -38,6 +40,34 @@ uint32_t ctotp(const uint8_t *arr, size_t index) {
     }
     return result;
 }
+time_t calibrate_czas() {
+	json_t *czasfl = json_load_file("/3ds/czas.json", 0, NULL);
+	onl = json_integer_value(json_object_get(czasfl, "onlineczas"));
+	last_loc = json_integer_value(json_object_get(czasfl, "localczas"));
+	json_decref(czasfl);
+	char stext[64];
+	snprintf(stext, sizeof(stext), "SV_TS: %lld", onl);
+	C2D_TextParse(&g_totpText[2], totpBuf, stext);
+	C2D_TextOptimize(&g_totpText[2]);
+	char lstext[64];
+	snprintf(lstext, sizeof(lstext), "L_TS: %lld", last_loc);
+	C2D_TextParse(&g_totpText[3], totpBuf, lstext);
+	C2D_TextOptimize(&g_totpText[3]);
+	char lsotext[64];
+	snprintf(lsotext, sizeof(lsotext), "TS_OFFSET: %lld", onl + (time(NULL) - last_loc));
+	C2D_TextParse(&g_totpText[4], totpBuf, lsotext);
+	C2D_TextOptimize(&g_totpText[4]);
+	return onl + (time(NULL) - last_loc);
+}
+void save_calczas() {
+    time_t now = time(NULL); // ← Only call once!
+    json_t *czasfl = json_load_file("/3ds/czas.json", 0, NULL);
+    json_object_set_new(czasfl, "onlineczas", json_integer(onl + (now - last_loc)));
+    json_object_set_new(czasfl, "localczas", json_integer(now));
+    json_dump_file(czasfl, "/3ds/czas.json", JSON_COMPACT);
+    json_decref(czasfl);
+}
+
 int compute_magic_number(const char *secretHex) {
     int secretLen = strlen(secretHex) / 2;
     unsigned char *secret = malloc(secretLen);
@@ -49,7 +79,8 @@ int compute_magic_number(const char *secretHex) {
         sscanf(secretHex + 2 * i, "%2hhx", &secret[i]);
     }
 
-    time_t t = time(NULL) - 3600;
+    time_t t = calibrate_czas();
+	save_calczas();
     int ts = (int)(t / 30);
 	for (int i = 0; i < secretLen; i++) {
 	}
@@ -74,7 +105,7 @@ int compute_magic_number(const char *secretHex) {
 	C2D_TextParse(&g_totpText[0], totpBuf, totptext);
 	C2D_TextOptimize(&g_totpText[0]);
 	char tstext[64];
-	snprintf(tstext, sizeof(tstext), "TS: %lld", time(NULL) - 3600);
+	snprintf(tstext, sizeof(tstext), "TS: %lld", t);
 	C2D_TextParse(&g_totpText[1], totpBuf, tstext);
 	C2D_TextOptimize(&g_totpText[1]);
     free(secret);

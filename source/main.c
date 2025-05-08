@@ -641,10 +641,37 @@ int main(int argc, char* argv[]) {
 			if (!citra_machen){
 				if (is_network_connected()) {
 					sprawdzajtokenasa(id_tokenk, refreshtoken);
+					if (access("/3ds/czas.json", F_OK) != 0) {
+						json_t *czroot = json_object();
+						long long serw = snrs_czas();
+						json_object_set_new(czroot, "onlineczas", json_integer(serw));
+						json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
+						json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
+						json_decref(czroot);
+					} else {
+						json_t *czroot = json_load_file("/3ds/czas.json", 0, NULL);
+						long long serw = snrs_czas();
+						json_object_set_new(czroot, "onlineczas", json_integer(serw));
+						json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
+						json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
+						json_decref(czroot);
+					}
 				} else {
+					if (access("/3ds/czas.json", F_OK) == 0) {
+						json_t *czroot = json_load_file("/3ds/czas.json", 0, NULL);
+						json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
+						json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
+						json_decref(czroot);
+					}
 				}
 			} else {
 				sprawdzajtokenasa(id_tokenk, refreshtoken);
+				json_t *czroot = json_object();
+				long long serw = snrs_czas();
+				json_object_set_new(czroot, "onlineczas", json_integer(serw));
+				json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
+				json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
+				json_decref(czroot);
 			}
 		}
 
@@ -2619,6 +2646,9 @@ int main(int argc, char* argv[]) {
 			C2D_DrawText(&memtext[1], C2D_AlignLeft | C2D_WithColor, 20, 55, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 			C2D_DrawText(&g_totpText[0], C2D_AlignLeft | C2D_WithColor, 290, 20, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 			C2D_DrawText(&g_totpText[1], C2D_AlignLeft | C2D_WithColor, 290, 35, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[2], C2D_AlignLeft | C2D_WithColor, 290, 50, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[3], C2D_AlignLeft | C2D_WithColor, 290, 65, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[4], C2D_AlignLeft | C2D_WithColor, 290, 80, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 		}
 
 		
@@ -2626,6 +2656,7 @@ int main(int argc, char* argv[]) {
 	} 
 	close_logger();
     running = false;
+	save_calczas();
     threadJoin(thread, UINT64_MAX);
     threadFree(thread);
     internet_thread_running = false;

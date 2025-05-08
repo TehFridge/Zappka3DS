@@ -1,6 +1,6 @@
 #include "logs.h"
 
-bool logplz = false;
+bool logplz = true;
 static FILE *log_file = NULL;
 
 

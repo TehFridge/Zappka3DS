@@ -11,6 +11,7 @@
 #include "request.h"
 #include "buttons.h"
 #include "zappka_totp_qr.h"
+#include <time.h>
 #define LOG_FILE "curl_log.txt"
 extern bool offermachen;
 extern bool categoryornah;
@@ -24,6 +25,7 @@ typedef struct {
     void* data;
     size_t size;
 } ResponseMachen;
+time_t snrs_czas();
 void removeTrailingNewline(char* str);
 void wrapText(const char* input, int maxWidth, char* output);
 void updateprom();

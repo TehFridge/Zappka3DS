@@ -50,7 +50,41 @@ const char* kurwacursor;
 char ploy_ids_bo_kurwa_reload[100][50];
 char typy_bo_kurwa_reload[100][50];
 const char* aftermachenkurw;
+time_t portable_timegm(struct tm *tm) {
+    char *tz = getenv("TZ");
+    setenv("TZ", "", 1); // Force UTC
+    tzset();
+    time_t ret = mktime(tm);
+    if (tz) setenv("TZ", tz, 1); else unsetenv("TZ");
+    tzset();
+    return ret;
+}
+time_t snrs_czas(){
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
 
+    headers = curl_slist_append(headers, "Accept: application/json");
+
+    refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", headers);
+    const char *time_str_start = strstr(global_response.data, "\"serverTime\": \"") + strlen("\"serverTime\": \"");
+    char time_str[25];
+    strncpy(time_str, time_str_start, 24); // "2025-05-05T10:40:58.847Z"
+    time_str[24] = '\0'; // null-terminate
+
+    // Extract components
+    struct tm t = {0};
+    int millis;
+    sscanf(time_str, "%4d-%2d-%2dT%2d:%2d:%2d.%3dZ",
+           &t.tm_year, &t.tm_mon, &t.tm_mday,
+           &t.tm_hour, &t.tm_min, &t.tm_sec, &millis);
+
+    t.tm_year -= 1900; // struct tm expects years since 1900
+    t.tm_mon  -= 1;    // struct tm expects months 0-11
+
+    time_t unix_time = portable_timegm(&t);
+	return unix_time;
+}
 void removeTrailingNewline(char* str) {
     size_t len = strlen(str);
     if (len > 0 && str[len - 1] == '\n') {
