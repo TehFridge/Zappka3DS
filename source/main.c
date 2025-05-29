@@ -529,7 +529,7 @@ void executeButtonFunction(int buttonIndex) {
 }
 
 static bool running = true;
-
+extern bool czasfuckup;
 void generate_qrcode() {
 	if (isLogged) {
 		int otp = compute_magic_number(secrettotpglobal);
@@ -589,9 +589,9 @@ int main(int argc, char* argv[]) {
     romfsInit();
 	cfguInit(); 
     gfxInitDefault();
-    C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
-    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
-    C2D_Prepare();
+	PrintConsole topConsole;
+    consoleInit(GFX_TOP, &topConsole);
+
     ndspInit();
 	json_t *jsonfl;
     Result ret;
@@ -685,6 +685,33 @@ int main(int argc, char* argv[]) {
 	if (!citra_machen){
 		start_internet_thread(); 
 	}
+
+	sprawdzajtokenasa("", "");
+	if (czasfuckup) {
+		const char* msg = "Zle ustawienia czasu!";
+		const char* msg2 = "W Rosalina Menu zrob:";
+		const char* msg3 = "Misc. Settings > Set Time via NTP";
+		int screenWidth = topConsole.windowWidth;
+		int screenHeight = topConsole.windowHeight;
+		int x = (screenWidth - strlen(msg)) / 2;
+		int x2 = (screenWidth - strlen(msg2)) / 2;
+		int x3 = (screenWidth - strlen(msg3)) / 2;
+		int y = screenHeight / 2;
+		printf("\x1b[%d;%dH%s", y, x, msg);  // ANSI escape to move cursor to (y, x)
+		printf("\x1b[%d;%dH%s", y+1, x2, msg2);  // ANSI escape to move cursor to (y, x)
+		printf("\x1b[%d;%dH%s", y+2, x3, msg3);  // ANSI escape to move cursor to (y, x)
+		//printf("Pobieranie z serwerów...");
+		sleep(5);
+	}
+	consoleClear();
+
+    gfxExit(); 
+    gfxInitDefault();
+
+
+    C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
+    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    C2D_Prepare();
     C3D_RenderTarget* top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
  
@@ -963,6 +990,9 @@ int main(int argc, char* argv[]) {
         if (kDown & KEY_START) {
             break;
         }
+		if (czasfuckup) {
+			break;
+		}
         touchPosition touch;
         hidTouchRead(&touch);
 		sfx = cwavList[0].cwav;

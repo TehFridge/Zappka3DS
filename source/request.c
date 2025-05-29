@@ -140,6 +140,7 @@ void print_headers(struct curl_slist *headers) {
         current = current->next;
     }
 }
+bool czasfuckup = false;
 extern void refresh_data(const char *url, const char *data, struct curl_slist *headers) {
 	youfuckedup = false;
     log_memory_info("Entering refresh_data");
@@ -192,6 +193,9 @@ extern void refresh_data(const char *url, const char *data, struct curl_slist *h
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 		if (response_code == 401) {
 			youfuckedup = true;
+		}
+		if (response_code == 0) {
+			czasfuckup = true;
 		}
 		if (res != CURLE_OK) {
 			log_to_file("[refresh_data] ERROR: curl_easy_perform() failed: %s", curl_easy_strerror(res));

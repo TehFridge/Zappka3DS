@@ -17,6 +17,7 @@ extern long response_code;
 extern bool requestdone;
 extern bool loadingshit;
 extern LightLock global_response_lock;
+extern bool czasfuckup;
 typedef struct {
     char url[256];         
     char *data;             
