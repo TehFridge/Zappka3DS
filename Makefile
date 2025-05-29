@@ -31,7 +31,7 @@ include $(DEVKITARM)/3ds_rules
 #     - icon.png
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
-TARGET		:=	Zappka3DS_FinalBeta3
+TARGET		:=	Zappka3DS_FinalBeta4
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
@@ -44,6 +44,7 @@ APP_VER				:= 1
 APP_TITLE			:= Zappka3DS
 APP_DESCRIPTION		:= Zappka na Nintendo 3DS
 APP_AUTHOR			:= TehFridge
+APP_VERSION			:= 1.0.0
 PRODUCT_CODE		:= ZAPP3DS
 UNIQUE_ID			:= 0xEC900
 

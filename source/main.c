@@ -51,7 +51,7 @@ extern int cwavCount;
 bool internet_available = false;
 static Thread internet_thread;
 static bool internet_thread_running = true;
-char combinedText[128]; 
+char combinedText[128];
 float speed = 20.0f; // High speed for fast reset
 int selectioncodelol;
 extern Button buttonsy[100];
@@ -85,11 +85,11 @@ float timer2 = 255.0f;
 float timer3 = 0.0f;
 float x = 0.0f;
 float y = 0.0f;
-float startY = -400.0f;    
-float endY = 0.0f;    
-float duration = 7.0f; 
-float elapsed = 0.0f;   
-float deltaTime = 0.1f; 
+float startY = -400.0f;
+float endY = 0.0f;
+float duration = 7.0f;
+float elapsed = 0.0f;
+float deltaTime = 0.1f;
 char themes[100][100];
 struct memory {
   char *response;
@@ -211,16 +211,16 @@ static size_t cb(void *data, size_t size, size_t nmemb, void *clientp)
 {
   size_t realsize = size * nmemb;
   struct memory *mem = (struct memory *)clientp;
- 
+
   char *ptr = realloc(mem->response, mem->size + realsize + 1);
   if(ptr == NULL)
     return 0;  /* out of memory! */
- 
+
   mem->response = ptr;
   memcpy(&(mem->response[mem->size]), data, realsize);
   mem->size += realsize;
   mem->response[mem->size] = 0;
- 
+
   return realsize;
 }
 
@@ -229,7 +229,7 @@ static size_t cb(void *data, size_t size, size_t nmemb, void *clientp)
 void send_verification_code(const char *nrtel, const char *id_token) {
     CURL *curl;
     CURLcode res;
-    
+
     json_t *json = json_object();
     if (!json) {
         fprintf(stderr, "Failed to create JSON object\n");
@@ -239,19 +239,19 @@ void send_verification_code(const char *nrtel, const char *id_token) {
     json_t *variables = json_object();
     json_t *input = json_object();
     json_t *phone_number = json_object();
-    
+
     json_object_set_new(phone_number, "countryCode", json_string("48"));
     json_object_set_new(phone_number, "nationalNumber", json_string(nrtel));
     json_object_set_new(input, "phoneNumber", phone_number);
     json_object_set_new(variables, "input", input);
-    
+
     json_object_set_new(json, "operationName", json_string("SendVerificationCode"));
     json_object_set_new(json, "query", json_string("mutation SendVerificationCode($input: SendVerificationCodeInput!) { sendVerificationCode(input: $input) { retryAfterSeconds } }"));
     json_object_set_new(json, "variables", variables);
 
-    
+
     char *data = json_dumps(json, JSON_COMPACT);
- 
+
     curl_global_init(CURL_GLOBAL_ALL);
     curl = curl_easy_init();
     if (curl) {
@@ -261,14 +261,14 @@ void send_verification_code(const char *nrtel, const char *id_token) {
         log_to_file("Request Data: %s", data);
         curl_easy_setopt(curl, CURLOPT_URL, "https://super-account.spapp.zabka.pl/");
 
-        
+
         headers = curl_slist_append(headers, "Content-Type: application/json");
         char auth_header[1024];
         snprintf(auth_header, sizeof(auth_header), "Authorization: %s", id_token);
         headers = curl_slist_append(headers, auth_header);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-       
+
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         curl_easy_setopt(curl, CURLOPT_STDERR, fopen(LOG_FILE, "a"));
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -276,10 +276,10 @@ void send_verification_code(const char *nrtel, const char *id_token) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-      
+
         res = curl_easy_perform(curl);
 
-      
+
         if (res != CURLE_OK) {
             log_to_file("curl_easy_perform() failed: %s", curl_easy_strerror(res));
         } else {
@@ -287,16 +287,16 @@ void send_verification_code(const char *nrtel, const char *id_token) {
             log_to_file("Request successful! Response Code: %ld", response_code);
             log_to_file("Response: %s", response);
         }
-		
-		
+
+
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
 
-   
+
     curl_global_cleanup();
-	
-   
+
+
     free(data);
     json_decref(json);
 }
@@ -309,12 +309,12 @@ bool is_network_connected() {
     }
     u32 status;
     bool connected = false;
-    
+
     if (R_SUCCEEDED(ACU_GetStatus(&status))) {
         connected = (status == 3);
     }
     acExit();
-    
+
     return connected;
 }
 
@@ -325,15 +325,27 @@ void check_internet() {
 		internet_available = false;
 	}
 }
+volatile bool pausedForSleep = false;
+
+void aptHookCallback(APT_HookType hook, void* param) {
+    switch (hook) {
+        case APTHOOK_ONSUSPEND:
+            pausedForSleep = true;
+            break;
+        case APTHOOK_ONRESTORE:
+            pausedForSleep = false;
+            break;
+        default:
+            break;
+    }
+}
 void internet_check_thread(void* arg) {
     while (internet_thread_running) {
-        check_internet();
-		if (internet_available) {
-			schizofrenia = false;
-		} else {
-			schizofrenia = true;
-		}
-        svcSleepThread(4 * 1000000000LL);  
+        if (!pausedForSleep) {
+            check_internet();
+            schizofrenia = !internet_available;
+        }
+        svcSleepThread(4 * 1000000000LL);
     }
 }
 void start_internet_thread() {
@@ -352,7 +364,7 @@ void send_ver_code_preauth() {
     const char *url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q";
 
     refresh_data(url, data, headers);
-	
+
     json_t *root = json_loads(global_response.data, 0, NULL);
     if (root) {
         json_t *id_token_json = json_object_get(root, "idToken");
@@ -368,12 +380,12 @@ void send_ver_code_preauth() {
 void rebuild_buffer() {
 	C2D_TextBufClear(g_staticBuf);
     C2D_TextFontParse(&g_staticText[0], font[0], g_staticBuf, "Wciśnij A.");
-    C2D_TextOptimize(&g_staticText[0]); 
+    C2D_TextOptimize(&g_staticText[0]);
 	C2D_TextFontParse(&g_staticText[1], font[0], g_staticBuf, "Ładowanie...");
-	C2D_TextOptimize(&g_staticText[1]); 
+	C2D_TextOptimize(&g_staticText[1]);
 	C2D_TextFontParse(&g_staticText[2], font[0], g_staticBuf, "Nie wykryto danych konta Żappka.\nWciśnij A by kontynuować");
-	C2D_TextOptimize(&g_staticText[2]); 
-	C2D_TextFontParse(&g_staticText[3], font[0], g_staticBuf, "Tak"); 
+	C2D_TextOptimize(&g_staticText[2]);
+	C2D_TextFontParse(&g_staticText[3], font[0], g_staticBuf, "Tak");
 	C2D_TextFontParse(&g_staticText[4], font[0], g_staticBuf, "Nie");
 	C2D_TextFontParse(&g_staticText[5], font[0], g_staticBuf, "Wprowadź numer telefonu.");
 	C2D_TextOptimize(&g_staticText[5]);
@@ -381,9 +393,9 @@ void rebuild_buffer() {
 	C2D_TextOptimize(&g_staticText[6]);
 	C2D_TextFontParse(&g_staticText[7], font[0], g_staticBuf, combinedText);
     C2D_TextFontParse(&g_staticText[8], font[0], g_staticBuf, "Twoje Żappsy");
-    C2D_TextOptimize(&g_staticText[8]); 
+    C2D_TextOptimize(&g_staticText[8]);
 	C2D_TextFontParse(&g_staticText[9], font[0], g_staticBuf, zappsystr);
-	C2D_TextOptimize(&g_staticText[9]); 
+	C2D_TextOptimize(&g_staticText[9]);
     C2D_TextFontParse(&g_staticText[10], font[0], g_staticBuf, "B - Powrót");
     C2D_TextOptimize(&g_staticText[10]);
     C2D_TextFontParse(&g_staticText[11], font[0], g_staticBuf, "Brak internetu :(");
@@ -464,8 +476,8 @@ void kupony() {
     Scene = 14;
 	startY = 0.0f;
 	elapsed = 0.0f;
-	endY = -400.0f; 
-	
+	endY = -400.0f;
+
 	if (sfx->numChannels == 2) {
 		cwavPlay(sfx, 0, 1);
 	} else {
@@ -483,15 +495,15 @@ void zappsy() {
     Scene = 12;
 	startY = 0.0f;
 	elapsed = 0.0f;
-	endY = -400.0f; 
-	
+	endY = -400.0f;
+
 	if (sfx->numChannels == 2) {
 		cwavPlay(sfx, 0, 1);
 	} else {
 		cwavPlay(sfx, 0, -1);
 	}
 	updatezappsy(id_tokenk, refreshtoken);
-	
+
 }
 
 void opcje() {
@@ -513,7 +525,7 @@ void opcje() {
 	startY = 0.0f;
 	elapsed = 0.0f;
 	endY = -400.0f;
-	
+
 	if (sfx->numChannels == 2) {
 		cwavPlay(sfx, 0, 1);
 	} else {
@@ -535,7 +547,7 @@ void generate_qrcode() {
 		int otp = compute_magic_number(secrettotpglobal);
 		doBasicDemo(&qrImage, otp, userajd);
 	}
-		
+
 }
 void kodQR() {
 	przycskmachen = false;
@@ -543,15 +555,15 @@ void kodQR() {
     Scene = 10;
 	startY = 0.0f;
 	elapsed = 0.0f;
-	endY = -400.0f; 
-	
+	endY = -400.0f;
+
 	if (sfx->numChannels == 2) {
 		cwavPlay(sfx, 0, 1);
 	} else {
 		cwavPlay(sfx, 0, -1);
 	}
 	generate_qrcode();
-	
+
 }
 void wyloguj() {
 	remove("/3ds/data.json");
@@ -560,8 +572,8 @@ void wyloguj() {
     Scene = 17;
 	startY = 0.0f;
 	elapsed = 0.0f;
-	endY = -400.0f; 
-	
+	endY = -400.0f;
+
 	if (sfx->numChannels == 2) {
 		cwavPlay(sfx, 0, 1);
 	} else {
@@ -574,7 +586,7 @@ void wyloguj() {
 		cwavPlay(bgm, 0, 1);
 	} else {
 		cwavPlay(bgm, 0, -1);
-		
+
 	}
 }
 void qr_thread(void* arg) {
@@ -587,11 +599,12 @@ int main(int argc, char* argv[]) {
 	cwavEnvMode_t mode = CWAV_ENV_DSP;
 	cwavUseEnvironment(mode);
     romfsInit();
-	cfguInit(); 
+	cfguInit();
     gfxInitDefault();
 	PrintConsole topConsole;
     consoleInit(GFX_TOP, &topConsole);
-
+	aptHookCookie aptCookie;
+	aptHook(&aptCookie, aptHookCallback, NULL);
     ndspInit();
 	json_t *jsonfl;
     Result ret;
@@ -609,7 +622,7 @@ int main(int argc, char* argv[]) {
 	start_request_thread();
 	if (access("/3ds/data.json", F_OK) == 0) {
 		isLogged = true;
-		
+
 	    jsonfl = json_load_file("/3ds/data.json", 0, NULL);
 		json_t *tempajd = json_object_get(jsonfl, "user_id");
 		json_t *nwmsecret = json_object_get(jsonfl, "hex_secret");
@@ -680,10 +693,10 @@ int main(int argc, char* argv[]) {
 	}
     char* url;
     char* body;
-	
+
 	Thread thread = threadCreate(qr_thread, NULL, 32 * 1024, 0x30, -2, false);
 	if (!citra_machen){
-		start_internet_thread(); 
+		start_internet_thread();
 	}
 
 	sprawdzajtokenasa("", "");
@@ -705,7 +718,7 @@ int main(int argc, char* argv[]) {
 	}
 	consoleClear();
 
-    gfxExit(); 
+    gfxExit();
     gfxInitDefault();
 
 
@@ -714,7 +727,7 @@ int main(int argc, char* argv[]) {
     C2D_Prepare();
     C3D_RenderTarget* top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     C3D_RenderTarget* bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
- 
+
 	static SwkbdState swkbd;
 	static char mybuf[60];
 	static char mybuf2[60];
@@ -724,7 +737,7 @@ int main(int argc, char* argv[]) {
 	bool didit = false;
 	bool swkbdTriggered = false;
     Scene = 0;
-	bool sceneStarted = false; 
+	bool sceneStarted = false;
 	bool rei = false;
 	bool chiyoko = true;
 	przycskmachen = true;
@@ -761,7 +774,7 @@ int main(int argc, char* argv[]) {
 		fprintf(stworzplkplz, "{\"currenttheme\":0}");
 		currenttheme = 0;
 		selectionthemelol = 0;
-		fclose(stworzplkplz);	
+		fclose(stworzplkplz);
 	}
 	if (currenttheme == 0){
 		themeon = false;
@@ -782,7 +795,7 @@ int main(int argc, char* argv[]) {
 				C2D_TextOptimize(&themeText[index + 1]);
 			}
 		}
-		maxThemes = index;	
+		maxThemes = index;
 		if (currenttheme != 0) {
 			char path[128];
 			snprintf(path, sizeof(path), "/3ds/zappkathemes/%s/colors.json", themes[currenttheme]);
@@ -829,35 +842,35 @@ int main(int argc, char* argv[]) {
 		logout_buttons = C2D_SpriteSheetLoad("romfs:/gfx/logout_buttons.t3x");
 		more_b = C2D_SpriteSheetLoad("romfs:/gfx/more.t3x");
 		themename_border = C2D_SpriteSheetLoad("romfs:/gfx/themename_border.t3x");
-		
+
 		scrollbar = C2D_SpriteSheetGetImage(scrollbarsheet, 0);
 		bgtop = C2D_SpriteSheetGetImage(background_top, 0);
 		bgdown = C2D_SpriteSheetGetImage(background_down, 0);
 		logo3ds = C2D_SpriteSheetGetImage(logo, 0);
-		scan_button = C2D_SpriteSheetGetImage(scan, 0); 
+		scan_button = C2D_SpriteSheetGetImage(scan, 0);
 		scan_pressed = C2D_SpriteSheetGetImage(scan, 1);
-		coupons_button = C2D_SpriteSheetGetImage(coupons, 0); 
+		coupons_button = C2D_SpriteSheetGetImage(coupons, 0);
 		coupons_pressed = C2D_SpriteSheetGetImage(coupons, 1);
-		za_malo = C2D_SpriteSheetGetImage(too_less, 0); 
-		points_button = C2D_SpriteSheetGetImage(points, 0); 
+		za_malo = C2D_SpriteSheetGetImage(too_less, 0);
+		points_button = C2D_SpriteSheetGetImage(points, 0);
 		points_pressed = C2D_SpriteSheetGetImage(points, 1);
-		settings_button = C2D_SpriteSheetGetImage(settings, 0); 
+		settings_button = C2D_SpriteSheetGetImage(settings, 0);
 		settings_pressed = C2D_SpriteSheetGetImage(settings, 1);
 		qr_framen_machen = C2D_SpriteSheetGetImage(qrframe, 0);
 		statusbaren = C2D_SpriteSheetGetImage(stat, 0);
 		zappsybaren = C2D_SpriteSheetGetImage(zappbar, 0);
-		couponbutton = C2D_SpriteSheetGetImage(couponenbuttonen, 0); 
-		couponbutton_pressed = C2D_SpriteSheetGetImage(couponenbuttonen, 1); 
+		couponbutton = C2D_SpriteSheetGetImage(couponenbuttonen, 0);
+		couponbutton_pressed = C2D_SpriteSheetGetImage(couponenbuttonen, 1);
 		gobackplz = C2D_SpriteSheetGetImage(goback, 0);
-		act_button = C2D_SpriteSheetGetImage(act_buttons, 0); 
-		act_pressed = C2D_SpriteSheetGetImage(act_buttons, 1); 
-		deact_button = C2D_SpriteSheetGetImage(deact_buttons, 0); 
-		deact_pressed = C2D_SpriteSheetGetImage(deact_buttons, 1); 
-		logout_button = C2D_SpriteSheetGetImage(logout_buttons, 0); 
-		logout_pressed = C2D_SpriteSheetGetImage(logout_buttons, 1); 
-		more_button = C2D_SpriteSheetGetImage(more_b, 0); 
-		themeborder = C2D_SpriteSheetGetImage(themename_border, 0); 
-		ch_theme = C2D_SpriteSheetGetImage(themename_border, 1); 
+		act_button = C2D_SpriteSheetGetImage(act_buttons, 0);
+		act_pressed = C2D_SpriteSheetGetImage(act_buttons, 1);
+		deact_button = C2D_SpriteSheetGetImage(deact_buttons, 0);
+		deact_pressed = C2D_SpriteSheetGetImage(deact_buttons, 1);
+		logout_button = C2D_SpriteSheetGetImage(logout_buttons, 0);
+		logout_pressed = C2D_SpriteSheetGetImage(logout_buttons, 1);
+		more_button = C2D_SpriteSheetGetImage(more_b, 0);
+		themeborder = C2D_SpriteSheetGetImage(themename_border, 0);
+		ch_theme = C2D_SpriteSheetGetImage(themename_border, 1);
 	} else {
 		char path[128];
 		snprintf(path, sizeof(path), "%s", themes[currenttheme]);
@@ -867,7 +880,7 @@ int main(int argc, char* argv[]) {
 		#define LOAD_SPRITE(var, filename) \
 			snprintf(fullpath, sizeof(fullpath), "/3ds/zappkathemes/%s/%s", path, filename); \
 			var = C2D_SpriteSheetLoad(fullpath);
-			
+
 		LOAD_SPRITE(scrollbarsheet, "usestylus.t3x");
 		LOAD_SPRITE(background_top, "bg.t3x");
 		LOAD_SPRITE(background_down, "bottombg.t3x");
@@ -892,47 +905,47 @@ int main(int argc, char* argv[]) {
 		bgtop = C2D_SpriteSheetGetImage(background_top, 0);
 		bgdown = C2D_SpriteSheetGetImage(background_down, 0);
 		logo3ds = C2D_SpriteSheetGetImage(logo, 0);
-		scan_button = C2D_SpriteSheetGetImage(scan, 0); 
+		scan_button = C2D_SpriteSheetGetImage(scan, 0);
 		scan_pressed = C2D_SpriteSheetGetImage(scan, 1);
-		coupons_button = C2D_SpriteSheetGetImage(coupons, 0); 
+		coupons_button = C2D_SpriteSheetGetImage(coupons, 0);
 		coupons_pressed = C2D_SpriteSheetGetImage(coupons, 1);
-		za_malo = C2D_SpriteSheetGetImage(too_less, 0); 
-		points_button = C2D_SpriteSheetGetImage(points, 0); 
+		za_malo = C2D_SpriteSheetGetImage(too_less, 0);
+		points_button = C2D_SpriteSheetGetImage(points, 0);
 		points_pressed = C2D_SpriteSheetGetImage(points, 1);
-		settings_button = C2D_SpriteSheetGetImage(settings, 0); 
+		settings_button = C2D_SpriteSheetGetImage(settings, 0);
 		settings_pressed = C2D_SpriteSheetGetImage(settings, 1);
 		qr_framen_machen = C2D_SpriteSheetGetImage(qrframe, 0);
 		statusbaren = C2D_SpriteSheetGetImage(stat, 0);
 		zappsybaren = C2D_SpriteSheetGetImage(zappbar, 0);
-		couponbutton = C2D_SpriteSheetGetImage(couponenbuttonen, 0); 
-		couponbutton_pressed = C2D_SpriteSheetGetImage(couponenbuttonen, 1); 
+		couponbutton = C2D_SpriteSheetGetImage(couponenbuttonen, 0);
+		couponbutton_pressed = C2D_SpriteSheetGetImage(couponenbuttonen, 1);
 		gobackplz = C2D_SpriteSheetGetImage(goback, 0);
-		act_button = C2D_SpriteSheetGetImage(act_buttons, 0); 
-		act_pressed = C2D_SpriteSheetGetImage(act_buttons, 1); 
-		deact_button = C2D_SpriteSheetGetImage(deact_buttons, 0); 
-		deact_pressed = C2D_SpriteSheetGetImage(deact_buttons, 1); 
-		logout_button = C2D_SpriteSheetGetImage(logout_buttons, 0); 
-		logout_pressed = C2D_SpriteSheetGetImage(logout_buttons, 1); 
-		more_button = C2D_SpriteSheetGetImage(more_b, 0); 
-		themeborder = C2D_SpriteSheetGetImage(themename_border, 0); 
+		act_button = C2D_SpriteSheetGetImage(act_buttons, 0);
+		act_pressed = C2D_SpriteSheetGetImage(act_buttons, 1);
+		deact_button = C2D_SpriteSheetGetImage(deact_buttons, 0);
+		deact_pressed = C2D_SpriteSheetGetImage(deact_buttons, 1);
+		logout_button = C2D_SpriteSheetGetImage(logout_buttons, 0);
+		logout_pressed = C2D_SpriteSheetGetImage(logout_buttons, 1);
+		more_button = C2D_SpriteSheetGetImage(more_b, 0);
+		themeborder = C2D_SpriteSheetGetImage(themename_border, 0);
 		ch_theme = C2D_SpriteSheetGetImage(themename_border, 1);
-		
+
 	}
-	
+
     buttonsy[0] = (Button){0, 10, 138, 105, coupons_button, coupons_pressed, false, 5, 10, 12, 14, 16, 0.75f, kupony};
 	buttonsy[1] = (Button){0, 130, 138, 105, points_button, points_pressed, false, 5, 10, 12, 14, 16, 0.75f, zappsy};
 	buttonsy[2] = (Button){0, 10, 193, 172, scan_button, scan_pressed, false, 5, 10, 12, 14, 16, 0.75f, kodQR};
-	buttonsy[3] = (Button){0, 185, 193, 51, settings_button, settings_pressed, false, 5, 10, 12, 14, 16, 0.75f, opcje};  
+	buttonsy[3] = (Button){0, 185, 193, 51, settings_button, settings_pressed, false, 5, 10, 12, 14, 16, 0.75f, opcje};
 	buttonsy[97] = (Button){0, 185, 193, 51, logout_button, logout_pressed, false, 16, 17, 23, 23, 23, 0.75f, wyloguj};
 	populateCwavList();
     isScrolling = false;
     C2D_TextFontParse(&g_staticText[0], font[0], g_staticBuf, "Wciśnij A.");
-    C2D_TextOptimize(&g_staticText[0]); 
+    C2D_TextOptimize(&g_staticText[0]);
 	C2D_TextFontParse(&g_staticText[1], font[0], g_staticBuf, "Ładowanie...");
-	C2D_TextOptimize(&g_staticText[1]); 
+	C2D_TextOptimize(&g_staticText[1]);
 	C2D_TextFontParse(&g_staticText[2], font[0], g_staticBuf, "Nie wykryto danych konta Żappka.\nWciśnij A by kontynuować");
-	C2D_TextOptimize(&g_staticText[2]); 
-	C2D_TextFontParse(&g_staticText[3], font[0], g_staticBuf, "Tak"); 
+	C2D_TextOptimize(&g_staticText[2]);
+	C2D_TextFontParse(&g_staticText[3], font[0], g_staticBuf, "Tak");
 	C2D_TextFontParse(&g_staticText[4], font[0], g_staticBuf, "Nie");
 	C2D_TextFontParse(&g_staticText[5], font[0], g_staticBuf, "Wprowadź numer telefonu.");
 	C2D_TextOptimize(&g_staticText[5]);
@@ -1073,7 +1086,7 @@ int main(int argc, char* argv[]) {
 		}
         if (kDown & KEY_A) {
             if (Scene == 1 & timer > 40) {
-				
+
 				cwavStop(bgm, 0, 1);
 				if (sfx->numChannels == 2) {
 					cwavPlay(sfx, 0, 1);
@@ -1082,7 +1095,7 @@ int main(int argc, char* argv[]) {
 				}
                 startY = 0.0f;
 				timer = 0.0f;
-                endY = -400.0f;   
+                endY = -400.0f;
                 elapsed = 0;
 				if (!isLogged) {
 					Scene = 2;
@@ -1090,11 +1103,11 @@ int main(int argc, char* argv[]) {
 					Scene = 5;
 				}
             } else if (Scene == 2 & timer > 119) {
-				
+
 				cwavStop(bgm, 0, 1);
                 startY = 0.0f;
 				timer = 0.0f;
-                endY = -400.0f;   
+                endY = -400.0f;
                 elapsed = 0;
                 Scene = 3;
 				if (sfx->numChannels == 2) {
@@ -1102,7 +1115,7 @@ int main(int argc, char* argv[]) {
 				} else {
 					cwavPlay(sfx, 0, -1);
 				}
-				
+
 				cwavPlay(loginbgm, 0, 1);
             }
         }
@@ -1110,7 +1123,7 @@ int main(int argc, char* argv[]) {
 			if (!schizofrenia) {
 				if (Scene == 10 & timer > 40) {
 					przycskmachen = true;
-					
+
 					if (sfx->numChannels == 2) {
 						cwavPlay(sfx, 0, 1);
 					} else {
@@ -1118,14 +1131,14 @@ int main(int argc, char* argv[]) {
 					}
 					startY = 0.0f;
 					timer = 0.0f;
-					endY = -400.0f;   
+					endY = -400.0f;
 					elapsed = 0;
 					Scene = 11;
 				}
 			}
             if (Scene == 12 & timer > 40) {
 				przycskmachen = true;
-				
+
 				if (sfx->numChannels == 2) {
 					cwavPlay(sfx, 0, 1);
 				} else {
@@ -1133,13 +1146,13 @@ int main(int argc, char* argv[]) {
 				}
                 startY = 0.0f;
 				timer = 0.0f;
-                endY = -400.0f;   
+                endY = -400.0f;
                 elapsed = 0;
 				Scene = 13;
-            } 
+            }
             if (Scene == 14 & timer > 40) {
 				przycskmachen = true;
-				
+
 				if (sfx->numChannels == 2) {
 					cwavPlay(sfx, 0, 1);
 				} else {
@@ -1147,14 +1160,14 @@ int main(int argc, char* argv[]) {
 				}
                 startY = 0.0f;
 				timer = 0.0f;
-                endY = -400.0f;   
+                endY = -400.0f;
                 elapsed = 0;
 				Scene = 15;
 				readingoferta = false;
-            } 
+            }
             if (Scene == 16 & timer > 40) {
 				przycskmachen = true;
-				
+
 				if (sfx->numChannels == 2) {
 					cwavPlay(sfx, 0, 1);
 				} else {
@@ -1162,7 +1175,7 @@ int main(int argc, char* argv[]) {
 				}
                 startY = 0.0f;
 				timer = 0.0f;
-                endY = -400.0f;   
+                endY = -400.0f;
                 elapsed = 0;
 				Scene = 17;
 				json_t *rootenmach = json_load_file("/3ds/zappkathemes/current_theme.json", 0, NULL);
@@ -1190,7 +1203,7 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-        
+
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		if (Scene == 0) {
 			if (!splashDone) {
@@ -1238,7 +1251,7 @@ int main(int argc, char* argv[]) {
 					cwavPlay(bgm, 0, 1);
 				} else {
 					cwavPlay(bgm, 0, -1);
-					
+
 				}
 				Scene = 1;
 			}
@@ -1247,7 +1260,7 @@ int main(int argc, char* argv[]) {
             if (timer > 20.0f) {
                 isScrolling = true;
             }
-            
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1264,13 +1277,13 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
             C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
-            
+
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
@@ -1288,16 +1301,16 @@ int main(int argc, char* argv[]) {
 				timer += 1.0f;
 			} else if (timer < 100) {
 				timer += 1.0f;
-				timer3 += 4.0f; 
-				
+				timer3 += 4.0f;
+
 			} else if (timer < 120) {
 				timer += 1.0f;
                 startY = -400.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
                 elapsed = 0;
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1317,36 +1330,36 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
             C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 80) {
 				if (!themeon){
 					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
-					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);		
+					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			
+
 		} else if (Scene == 3) {
 			if (timer < 70) {
-				timer += 1.0f; 
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
 			} else if (timer < 209) {
 				timer += 1.0f;
 			} else if (timer > 208 && !swkbdTriggered) {
@@ -1367,7 +1380,7 @@ int main(int argc, char* argv[]) {
 				swkbdTriggered = false;
 				Scene = 4;
 			}
-            
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1389,41 +1402,41 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 80) {
 				if (!themeon){
 					drawShadowedText(&g_staticText[5], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
-					drawShadowedText(&g_staticText[5], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);			
+					drawShadowedText(&g_staticText[5], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			} else {
 				if (!themeon){
 					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
-					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);		
+					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
-			}			
-			
+			}
+
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 
-			
+
 		} else if (Scene == 4) {
 			if (timer < 70) {
-				timer += 1.0f; 
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
 			} else if (timer < 209) {
 				timer += 1.0f;
 			} else if (timer > 208 && !swkbdTriggered) {
@@ -1442,7 +1455,7 @@ int main(int argc, char* argv[]) {
 				swkbdTriggered = false;
 				Scene = 6;
 			}
-            
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1464,51 +1477,51 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 80) {
 				if (!themeon){
 					drawShadowedText(&g_staticText[6], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
-					drawShadowedText(&g_staticText[6], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);			
+					drawShadowedText(&g_staticText[6], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			} else {
 				if (!themeon){
 					drawShadowedText(&g_staticText[5], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
-					drawShadowedText(&g_staticText[5], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);			
+					drawShadowedText(&g_staticText[5], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
-			}			
-			
+			}
+
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			
-		} else if (Scene == 5) {	
+
+		} else if (Scene == 5) {
 			if (!sceneStarted) {
 				cwavStop(loginbgm, 0, 1);
 				cwavPlay(menu, 0, 1);
 				sceneStarted = true;
 				isLogged = true;
 			}
-			
+
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;				
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
 				if (!schizofrenia) {
 					generatingQR = false;
 				} else {
@@ -1523,12 +1536,12 @@ int main(int argc, char* argv[]) {
 					generatingQR = true;
 					startY = 0.0f;
 					elapsed = 0.0f;
-					endY = -400.0f; 
+					endY = -400.0f;
 					Scene = 10;
 				}
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1538,31 +1551,31 @@ int main(int argc, char* argv[]) {
                 x = 0.0f;
                 y = 0.0f;
             }
-			
+
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = -400;
 						buttonsy[1].x = -400;
 						buttonsy[2].x = 400;
 						buttonsy[3].x = 400;
-						
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
 					}
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
             C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 90) {
 				C2D_DrawImageAt(statusbaren, 0.0f, -currentY, 0.0f, NULL, 1.0f, 1.0f);
@@ -1582,22 +1595,22 @@ int main(int argc, char* argv[]) {
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			
+
 		} else if (Scene == 6) {
 			if (timer < 70) {
-				timer += 1.0f; 
+				timer += 1.0f;
 			} else if (timer < 120) {
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;  
-				if (!youfuckedup) {		
+                endY = 0.0f;
+				if (!youfuckedup) {
 					Scene = 5;
 				} else {
 					Scene = 3;
@@ -1605,7 +1618,7 @@ int main(int argc, char* argv[]) {
 			} else if (timer < 209) {
 				timer += 1.0f;
 			}
-            
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1637,20 +1650,20 @@ int main(int argc, char* argv[]) {
 				if (!themeon){
 					drawShadowedText(&g_staticText[6], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
-					drawShadowedText(&g_staticText[6], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);		
+					drawShadowedText(&g_staticText[6], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
-			}			
-			
+			}
+
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			
-		} else if (Scene == 7) {      
+
+		} else if (Scene == 7) {
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1658,7 +1671,7 @@ int main(int argc, char* argv[]) {
                 y -= 0.5f;
 				if (timer3 >= 0) {
 					timer3 -= 4.0f;
-				}	
+				}
             } else {
                 x = 0.0f;
                 y = 0.0f;
@@ -1675,19 +1688,19 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
-			}			
+			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			
-		} else if (Scene == 8) {      
+
+		} else if (Scene == 8) {
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1695,7 +1708,7 @@ int main(int argc, char* argv[]) {
                 y -= 0.5f;
 				if (timer3 >= 0) {
 					timer3 -= 4.0f;
-				}	
+				}
             } else {
                 x = 0.0f;
                 y = 0.0f;
@@ -1712,38 +1725,38 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
-			}			
+			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			
+
 		} else if (Scene == 10) {
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;	
-				generatingQR = true;				
+				timer += 1.0f;
+				generatingQR = true;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
-				
+                endY = 0.0f;
+
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1757,12 +1770,12 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, 6.5f); 
+						currentY = easeInQuad(elapsed, startY, endY, 6.5f);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, 7.0f);
@@ -1770,7 +1783,7 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
 				C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
@@ -1793,11 +1806,11 @@ int main(int argc, char* argv[]) {
 					}
 				}
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (!schizofrenia) {
 				C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
@@ -1808,25 +1821,25 @@ int main(int argc, char* argv[]) {
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 
-			
+
 		} else if (Scene == 11) {
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;				
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1840,12 +1853,12 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
@@ -1853,7 +1866,7 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
 				C2D_DrawImageAt(qr_framen_machen, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
@@ -1866,11 +1879,11 @@ int main(int argc, char* argv[]) {
 				elapsed = 0;
 				Scene = 5;
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
@@ -1880,26 +1893,26 @@ int main(int argc, char* argv[]) {
 			if (!schizofrenia) {
 				C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			}
-			
+
 		} else if (Scene == 12) {
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;			
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
-				
+                endY = 0.0f;
+
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -1913,12 +1926,12 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
@@ -1926,7 +1939,7 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
 				C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
@@ -1945,9 +1958,9 @@ int main(int argc, char* argv[]) {
 					}
 				}
 			} else if (timer > 120) {
-				
+
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 120) {
 				loadingshit = false;
@@ -1959,7 +1972,7 @@ int main(int argc, char* argv[]) {
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
@@ -1967,9 +1980,9 @@ int main(int argc, char* argv[]) {
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			if (timer > 120) { 
+			if (timer > 120) {
 				C2D_DrawImageAt(zappsybaren, 0.0f, -currentY, 0.0f, NULL, 1.0f, 1.0f);
-				
+
 				if (json_done) {
 					drawShadowedText(&g_staticText[9], 160.0f, -currentY + 80, 0.5f, 2.3f, 2.3f, C2D_Color32(0xff, 0xff, 0xff, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
@@ -1981,25 +1994,25 @@ int main(int argc, char* argv[]) {
 					}
 				}
 			}
-			
+
 		} else if (Scene == 13) {
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;				
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -2013,12 +2026,12 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
@@ -2026,7 +2039,7 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
 				if (!themeon) {
@@ -2040,11 +2053,11 @@ int main(int argc, char* argv[]) {
 				elapsed = 0;
 				Scene = 5;
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
@@ -2057,26 +2070,26 @@ int main(int argc, char* argv[]) {
 				C2D_DrawImageAt(zappsybaren, 0.0f, -currentY, 0.0f, NULL, 1.0f, 1.0f);
 				drawShadowedText(&g_staticText[9], 160.0f, -currentY + 80, 0.5f, 2.3f, 2.3f, C2D_Color32(0xff, 0xff, 0xff, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 			}
-			
+
 		} else if (Scene == 14) {
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;			
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
-				
+                endY = 0.0f;
+
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -2090,17 +2103,17 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+
 					}
 					if (timer > 120) {
-						
+
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
-						buttonsy[4].x = 40; 
+						buttonsy[4].x = 40;
 						buttonsy[4].y = -currentY + 70 + text_h - textOffset;
 					}
                     elapsed += deltaTime;
@@ -2108,7 +2121,7 @@ int main(int argc, char* argv[]) {
 					buttonsy[4].y = 70 + text_h - textOffset;
 				}
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
 				C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
@@ -2127,9 +2140,9 @@ int main(int argc, char* argv[]) {
 					}
 				}
 			} else if (timer > 120) {
-				
+
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 120) {
 				loadingshit = false;
@@ -2176,7 +2189,7 @@ int main(int argc, char* argv[]) {
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
@@ -2239,7 +2252,7 @@ int main(int argc, char* argv[]) {
 									json_done = true;
 									loadingshit = true;
 								}
-							} 
+							}
 							if (!categoryfeeddone) {
 								if (requestdone) {
 									process_category();
@@ -2255,31 +2268,31 @@ int main(int argc, char* argv[]) {
 								touchoferta = false;
 								log_to_file("dupa");
 								json_done = true;
-							}	
-							
+							}
+
 						}
 					}
 				}
 			}
-			
+
 		} else if (Scene == 15) {
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;				
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -2293,14 +2306,14 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						buttonsy[4].x = 40; 
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+						buttonsy[4].x = 40;
 						buttonsy[4].y = -currentY + 70 + text_h - textOffset;
-						
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
@@ -2308,7 +2321,7 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer > 120) {
 				timer = 80;
@@ -2317,7 +2330,7 @@ int main(int argc, char* argv[]) {
 				Scene = 5;
 				removeButtonEntries(70);
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 120) {
 				loadingshit = false;
@@ -2364,13 +2377,13 @@ int main(int argc, char* argv[]) {
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
 			}
-			
+
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer < 120) {
@@ -2426,7 +2439,7 @@ int main(int argc, char* argv[]) {
 									json_done = true;
 									loadingshit = true;
 								}
-							} 
+							}
 							if (!categoryfeeddone) {
 								if (requestdone) {
 									process_category();
@@ -2440,8 +2453,8 @@ int main(int argc, char* argv[]) {
 								touchoferta = false;
 								log_to_file("dupa");
 								json_done = true;
-							}	
-							
+							}
+
 						}
 					}
 				}
@@ -2451,20 +2464,20 @@ int main(int argc, char* argv[]) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;			
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
-				
+                endY = 0.0f;
+
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -2478,23 +2491,23 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
-						buttonsy[97].x = 70; 
+						buttonsy[97].x = 70;
 						przycskmachen = true;
 						buttonsy[97].y = -currentY + 20;
 					}
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
 				C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
@@ -2513,9 +2526,9 @@ int main(int argc, char* argv[]) {
 					}
 				}
 			} else if (timer > 120) {
-				
+
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 120) {
 				loadingshit = false;
@@ -2527,7 +2540,7 @@ int main(int argc, char* argv[]) {
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 96; i++) {
@@ -2535,7 +2548,7 @@ int main(int argc, char* argv[]) {
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			if (timer > 120) { 
+			if (timer > 120) {
 				for (int i = 97; i < 100; i++) {
 					drawButton(&buttonsy[i], Scene);
 				}
@@ -2551,26 +2564,26 @@ int main(int argc, char* argv[]) {
 				}
 				C2D_DrawImageAt(ch_theme, 38.0f, -currentY + 185, 0.0f, NULL, 0.6f, 0.6f);
 			}
-			
-			
+
+
 		} else if (Scene == 17) {
 			if (timer2 > 0.0f) {
                 timer2 -= 7.0f;
             }
 			if (timer < 70) {
-				timer += 1.0f;				
+				timer += 1.0f;
 			} else if (timer < 120) {
 				timer += 1.0f;
 				timer3 -= 2.0f;
                 startY = -400.0f;
 				elapsed = 0.0f;
-                endY = 0.0f;   
+                endY = 0.0f;
 			} else if (timer < 209) {
 				timer += 1.0f;
-				
+
 			}
-			
-            
+
+
             C2D_TargetClear(top, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(top);
             if (y > -40.0f) {
@@ -2584,14 +2597,14 @@ int main(int argc, char* argv[]) {
             if (isScrolling) {
                 if (elapsed < duration) {
 					if (timer < 120) {
-						currentY = easeInQuad(elapsed, startY, endY, duration); 
+						currentY = easeInQuad(elapsed, startY, endY, duration);
 						buttonsy[0].x = currentY;
-						buttonsy[1].x = currentY; 
-						buttonsy[2].x = -currentY + 140; 
-						buttonsy[3].x = -currentY + 140; 
-						buttonsy[97].x = 70; 
-						buttonsy[97].y = -currentY + 20; 
-						
+						buttonsy[1].x = currentY;
+						buttonsy[2].x = -currentY + 140;
+						buttonsy[3].x = -currentY + 140;
+						buttonsy[97].x = 70;
+						buttonsy[97].y = -currentY + 20;
+
 					}
 					if (timer > 120) {
 						currentY = easeOutQuad(elapsed, startY, endY, duration);
@@ -2599,7 +2612,7 @@ int main(int argc, char* argv[]) {
                     elapsed += deltaTime;
                 }
             }
-                
+
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
 				if (!themeon) {
@@ -2620,11 +2633,11 @@ int main(int argc, char* argv[]) {
 					timer3 = 0.0f;
 				}
 			}
-			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));	
+			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
-            
+
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
@@ -2638,16 +2651,16 @@ int main(int argc, char* argv[]) {
 			} else {
 				drawShadowedText(&g_staticText[15], 160.0f, -currentY + 70, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				drawShadowedText(&themeText[selectionthemelol], 160.0f, -currentY + 115, 0.5f, 1.5f, 1.5f, themeBaseColor, themeoutColor);
-				drawShadowedText(&g_staticText[16], 160.0f, -currentY + 163, 0.5f, 0.5f, 0.5f, themeBaseColor, themeoutColor);	
+				drawShadowedText(&g_staticText[16], 160.0f, -currentY + 163, 0.5f, 0.5f, 0.5f, themeBaseColor, themeoutColor);
 			}
 			C2D_DrawImageAt(ch_theme, 38.0f, -currentY + 185, 0.0f, NULL, 0.6f, 0.6f);
 
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			if (timer > 120) { 
-			
+			if (timer > 120) {
+
 			}
-			
+
 		}
 		if (cpu_debug) {
 			C2D_SceneBegin(top);
@@ -2681,9 +2694,9 @@ int main(int argc, char* argv[]) {
 			C2D_DrawText(&g_totpText[4], C2D_AlignLeft | C2D_WithColor, 290, 80, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 		}
 
-		
+
 		C3D_FrameEnd(0);
-	} 
+	}
 	close_logger();
     running = false;
 	save_calczas();
