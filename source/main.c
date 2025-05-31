@@ -699,7 +699,7 @@ int main(int argc, char* argv[]) {
 		start_internet_thread();
 	}
 
-	//sprawdzajtokenasa("", "");
+	sprawdzajtokenasa("", "");
 	if (czasfuckup) {
 		const char* msg = "Zle ustawienia czasu!";
 		const char* msg2 = "W Rosalina Menu zrob:";
