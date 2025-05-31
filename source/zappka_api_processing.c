@@ -408,8 +408,8 @@ void process_ids(int selectedbutton) {
 			log_to_file("button: %d", selectedbutton);
 			size_t tile_count = json_array_size(tiles);
 			log_to_file("Number of tiles: %zu", tile_count);
-			json_t *tilesselected = json_array_get(tiles, selectedbutton - 5);
-			log_to_file("arraytle: %d", selectedbutton - 5);
+			json_t *tilesselected = json_array_get(tiles, selectedbutton - 4);
+			log_to_file("arraytle: %d", selectedbutton - 4);
 			json_t *offerTreeLevel = json_object_get(tilesselected, "offerTreeLevel");
 			json_t *id = json_object_get(offerTreeLevel, "id");
 			json_t *typename = json_object_get(offerTreeLevel, "__typename");

@@ -163,7 +163,7 @@ extern void refresh_data(const char *url, const char *data, struct curl_slist *h
         log_to_file("[refresh_data] Starting request to URL: %s", url);
         log_to_file("[refresh_data] Request Data: %s", data);
 
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 		curl_easy_setopt(curl, CURLOPT_CAINFO, "romfs:/cacert.pem");
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
 		log_to_file("[refresh_data] Setting Verbose Output...", data);
