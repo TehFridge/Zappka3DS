@@ -699,7 +699,7 @@ int main(int argc, char* argv[]) {
 		start_internet_thread();
 	}
 
-	sprawdzajtokenasa("", "");
+	refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", NULL);
 	if (czasfuckup) {
 		const char* msg = "Zle ustawienia czasu!";
 		const char* msg2 = "W Rosalina Menu zrob:";
