@@ -33,6 +33,7 @@
 
 C2D_TextBuf totpBuf = NULL;
 C2D_Text g_totpText[5];  // Just declared, will be initialized when needed
+extern time_t czas_wygasniecia;
 extern bool logplz;
 extern float text_w, text_h;
 extern float max_scroll;
@@ -269,7 +270,8 @@ void send_verification_code(const char *nrtel, const char *id_token) {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
 
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+		curl_easy_setopt(curl, CURLOPT_CAINFO, "romfs:/cacert.pem");
         curl_easy_setopt(curl, CURLOPT_STDERR, fopen(LOG_FILE, "a"));
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
@@ -456,53 +458,57 @@ void ping() {
 }
 
 void kupony() {
-	buttonsy[4] = (Button){0};
-	if (kuponobraz != NULL) {
-		C2D_SpriteSheetFree(kuponobraz);
-	}
-	ofertanow = false;
-	obrazekdone = false;
-	offermachen = false;
-	touchoferta = true;
-	requestdone = false;
-	loadingshit = true;
-	przycskmachen = false;
-	categoryfeeddone = true;
-	dawajploy = false;
-	categoryornah = false;
-	zonefeeddone = false;
-	json_done = false;
-	timer = 0.0f;
-    Scene = 14;
-	startY = 0.0f;
-	elapsed = 0.0f;
-	endY = -400.0f;
+	if (is_network_connected()) {
+		buttonsy[4] = (Button){0};
+		if (kuponobraz != NULL) {
+			C2D_SpriteSheetFree(kuponobraz);
+		}
+		ofertanow = false;
+		obrazekdone = false;
+		offermachen = false;
+		touchoferta = true;
+		requestdone = false;
+		loadingshit = true;
+		przycskmachen = false;
+		categoryfeeddone = true;
+		dawajploy = false;
+		categoryornah = false;
+		zonefeeddone = false;
+		json_done = false;
+		timer = 0.0f;
+		Scene = 14;
+		startY = 0.0f;
+		elapsed = 0.0f;
+		endY = -400.0f;
 
-	if (sfx->numChannels == 2) {
-		cwavPlay(sfx, 0, 1);
-	} else {
-		cwavPlay(sfx, 0, -1);
+		if (sfx->numChannels == 2) {
+			cwavPlay(sfx, 0, 1);
+		} else {
+			cwavPlay(sfx, 0, -1);
+		}
+		log_to_file("Updating Ploy Zones...");
+		updateploy(id_tokenk, refreshtoken);
 	}
-	log_to_file("Updating Ploy Zones...");
-	updateploy(id_tokenk, refreshtoken);
 }
 
 
 void zappsy() {
-	przycskmachen = false;
-	json_done = false;
-	timer = 0.0f;
-    Scene = 12;
-	startY = 0.0f;
-	elapsed = 0.0f;
-	endY = -400.0f;
+	if (is_network_connected()) {
+		przycskmachen = false;
+		json_done = false;
+		timer = 0.0f;
+		Scene = 12;
+		startY = 0.0f;
+		elapsed = 0.0f;
+		endY = -400.0f;
 
-	if (sfx->numChannels == 2) {
-		cwavPlay(sfx, 0, 1);
-	} else {
-		cwavPlay(sfx, 0, -1);
+		if (sfx->numChannels == 2) {
+			cwavPlay(sfx, 0, 1);
+		} else {
+			cwavPlay(sfx, 0, -1);
+		}
+		updatezappsy(id_tokenk, refreshtoken);
 	}
-	updatezappsy(id_tokenk, refreshtoken);
 
 }
 
@@ -651,36 +657,43 @@ int main(int argc, char* argv[]) {
 			snprintf(combinedText, sizeof(combinedText), "Witaj %s!", nejmenmachen);
 			int otpen = compute_magic_number(secrettotpglobal);
 			doBasicDemo(&qrImage, otpen, userajd);
-			if (!citra_machen){
+			if (!citra_machen) {
 				if (is_network_connected()) {
 					sprawdzajtokenasa(id_tokenk, refreshtoken);
-					if (access("/3ds/czas.json", F_OK) != 0) {
-						json_t *czroot = json_object();
-						long long serw = snrs_czas();
-						json_object_set_new(czroot, "onlineczas", json_integer(serw));
-						json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
-						json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
-						json_decref(czroot);
-					} else {
-						json_t *czroot = json_load_file("/3ds/czas.json", 0, NULL);
-						long long serw = snrs_czas();
-						json_object_set_new(czroot, "onlineczas", json_integer(serw));
-						json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
-						json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
-						json_decref(czroot);
+				}
+
+				json_t *czroot = NULL;
+				json_error_t error;
+
+				if (access("/3ds/czas.json", F_OK) == 0) {
+					czroot = json_load_file("/3ds/czas.json", 0, &error);
+					if (!czroot) {
+						//printf("Failed to load czas.json: %s\n", error.text);
+						czroot = json_object();
 					}
 				} else {
-					if (access("/3ds/czas.json", F_OK) == 0) {
-						json_t *czroot = json_load_file("/3ds/czas.json", 0, NULL);
-						json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
-						json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
-						json_decref(czroot);
-					}
+					czroot = json_object();
 				}
+
+				if (!czroot) {
+					printf("Failed to create or load JSON object.\n");
+				}
+
+				if (is_network_connected()) {
+					time_t serw = snrs_czas();
+					json_object_set_new(czroot, "onlineczas", json_integer(serw));
+				}
+				json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
+
+				if (json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT) != 0) {
+					printf("Failed to write czas.json\n");
+				}
+
+				json_decref(czroot);
 			} else {
 				sprawdzajtokenasa(id_tokenk, refreshtoken);
 				json_t *czroot = json_object();
-				long long serw = snrs_czas();
+				time_t serw = snrs_czas();
 				json_object_set_new(czroot, "onlineczas", json_integer(serw));
 				json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
 				json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT);
@@ -698,23 +711,25 @@ int main(int argc, char* argv[]) {
 	if (!citra_machen){
 		start_internet_thread();
 	}
-
-	refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", NULL);
-	if (czasfuckup) {
-		const char* msg = "Zle ustawienia czasu!";
-		const char* msg2 = "W Rosalina Menu zrob:";
-		const char* msg3 = "Misc. Settings > Set Time via NTP";
-		int screenWidth = topConsole.windowWidth;
-		int screenHeight = topConsole.windowHeight;
-		int x = (screenWidth - strlen(msg)) / 2;
-		int x2 = (screenWidth - strlen(msg2)) / 2;
-		int x3 = (screenWidth - strlen(msg3)) / 2;
-		int y = screenHeight / 2;
-		printf("\x1b[%d;%dH%s", y, x, msg);  // ANSI escape to move cursor to (y, x)
-		printf("\x1b[%d;%dH%s", y+1, x2, msg2);  // ANSI escape to move cursor to (y, x)
-		printf("\x1b[%d;%dH%s", y+2, x3, msg3);  // ANSI escape to move cursor to (y, x)
-		//printf("Pobieranie z serwerów...");
-		sleep(5);
+	consoleClear();
+	if (is_network_connected()) {
+		refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", NULL);
+		if (czasfuckup) {
+			const char* msg = "Zle ustawienia czasu!";
+			const char* msg2 = "W Rosalina Menu zrob:";
+			const char* msg3 = "Misc. Settings > Set Time via NTP";
+			int screenWidth = topConsole.windowWidth;
+			int screenHeight = topConsole.windowHeight;
+			int x = (screenWidth - strlen(msg)) / 2;
+			int x2 = (screenWidth - strlen(msg2)) / 2;
+			int x3 = (screenWidth - strlen(msg3)) / 2;
+			int y = screenHeight / 2;
+			printf("\x1b[%d;%dH%s", y, x, msg);  // ANSI escape to move cursor to (y, x)
+			printf("\x1b[%d;%dH%s", y+1, x2, msg2);  // ANSI escape to move cursor to (y, x)
+			printf("\x1b[%d;%dH%s", y+2, x3, msg3);  // ANSI escape to move cursor to (y, x)
+			//printf("Pobieranie z serwerów...");
+			sleep(5);
+		}
 	}
 	consoleClear();
 
@@ -1120,21 +1135,19 @@ int main(int argc, char* argv[]) {
             }
         }
         if (kDown & KEY_B) {
-			if (!schizofrenia) {
-				if (Scene == 10 & timer > 40) {
-					przycskmachen = true;
+			if (Scene == 10 & timer > 40) {
+				przycskmachen = true;
 
-					if (sfx->numChannels == 2) {
-						cwavPlay(sfx, 0, 1);
-					} else {
-						cwavPlay(sfx, 0, -1);
-					}
-					startY = 0.0f;
-					timer = 0.0f;
-					endY = -400.0f;
-					elapsed = 0;
-					Scene = 11;
+				if (sfx->numChannels == 2) {
+					cwavPlay(sfx, 0, 1);
+				} else {
+					cwavPlay(sfx, 0, -1);
 				}
+				startY = 0.0f;
+				timer = 0.0f;
+				endY = -400.0f;
+				elapsed = 0;
+				Scene = 11;
 			}
             if (Scene == 12 & timer > 40) {
 				przycskmachen = true;
@@ -1240,7 +1253,13 @@ int main(int argc, char* argv[]) {
 						}
 						C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, transpar2));
 					}
-
+					if (schizofrenia) {
+						if (!themeon) {
+							drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+						} else {
+							drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+						}
+					}
 					C2D_TargetClear(bottom, C2D_Color32(0, 0, 0, 255));
 					C2D_SceneBegin(bottom);
 				} else {
@@ -1280,7 +1299,13 @@ int main(int argc, char* argv[]) {
 
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
             C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
-
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1340,6 +1365,13 @@ int main(int argc, char* argv[]) {
 					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
 					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
+				}
+			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
@@ -1418,6 +1450,13 @@ int main(int argc, char* argv[]) {
 					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1493,6 +1532,13 @@ int main(int argc, char* argv[]) {
 					drawShadowedText(&g_staticText[5], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1522,23 +1568,23 @@ int main(int argc, char* argv[]) {
                 startY = -400.0f;
 				elapsed = 0.0f;
                 endY = 0.0f;
-				if (!schizofrenia) {
-					generatingQR = false;
-				} else {
-					Scene = 10;
-					generatingQR = true;
-				}
+				// if (!schizofrenia) {
+					// generatingQR = false;
+				// } else {
+					// Scene = 10;
+					// generatingQR = true;
+				// }
 			} else if (timer < 209) {
 				timer += 1.0f;
 			} else if (timer > 208) {
-				if (schizofrenia) {
-					timer = 0.0f;
-					generatingQR = true;
-					startY = 0.0f;
-					elapsed = 0.0f;
-					endY = -400.0f;
-					Scene = 10;
-				}
+				// if (schizofrenia) {
+					// timer = 0.0f;
+					// generatingQR = true;
+					// startY = 0.0f;
+					// elapsed = 0.0f;
+					// endY = -400.0f;
+					// Scene = 10;
+				// }
 			}
 
 
@@ -1591,6 +1637,13 @@ int main(int argc, char* argv[]) {
 					} else {
 						drawShadowedText_noncentered(&g_staticText[1], 180.0f, -currentY + 215.0f, 0.5f, 0.8f, 0.8f, themeBaseColor, themeoutColor);
 					}
+				}
+			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
@@ -1653,6 +1706,13 @@ int main(int argc, char* argv[]) {
 					drawShadowedText(&g_staticText[6], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 				}
 			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1691,6 +1751,13 @@ int main(int argc, char* argv[]) {
 
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1728,6 +1795,13 @@ int main(int argc, char* argv[]) {
 
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1798,12 +1872,12 @@ int main(int argc, char* argv[]) {
 				if (qrImage.tex && qrImage.subtex) {
 					C2D_DrawImageAt(qrImage, 112.0f, currentY + 27, 0.0f, NULL, 1.0f, 1.0f);
 				}
-				if (schizofrenia) {
-					if (!themeon) {
-						drawShadowedText_noncentered(&g_staticText[11], 0.0f, -currentY + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
-					} else {
-						drawShadowedText_noncentered(&g_staticText[11], 0.0f, -currentY + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
-					}
+			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
@@ -1812,9 +1886,7 @@ int main(int argc, char* argv[]) {
             C2D_SceneBegin(bottom);
 
             C2D_DrawImageAt(bgdown, x, y, 0.0f, NULL, 1.0f, 1.0f);
-			if (!schizofrenia) {
-				C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
-			}
+			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
 			}
@@ -1879,6 +1951,13 @@ int main(int argc, char* argv[]) {
 				elapsed = 0;
 				Scene = 5;
 			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
@@ -1890,9 +1969,7 @@ int main(int argc, char* argv[]) {
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
-			if (!schizofrenia) {
-				C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
-			}
+			C2D_DrawImageAt(gobackplz, currentY + 5.0f, 210.0f, 0.0f, NULL, 1.0f, 1.0f);
 
 		} else if (Scene == 12) {
 			if (timer2 > 0.0f) {
@@ -1968,6 +2045,13 @@ int main(int argc, char* argv[]) {
 					drawShadowedText(&g_staticText[8], 200.0f, currentY + 80, 0.5f, 2.5f, 2.5f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
 					drawShadowedText(&g_staticText[8], 200.0f, currentY + 80, 0.5f, 2.5f, 2.5f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
@@ -2052,6 +2136,13 @@ int main(int argc, char* argv[]) {
 				timer2 = 0;
 				elapsed = 0;
 				Scene = 5;
+			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
@@ -2186,6 +2277,13 @@ int main(int argc, char* argv[]) {
 				C2D_DrawImage(kuponkurwa, &shadowParams, &shadowTint);
 
 				C2D_DrawImage(kuponkurwa, &params, NULL);
+			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
 			}
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
@@ -2383,7 +2481,13 @@ int main(int argc, char* argv[]) {
 			for (int i = 0; i < 100; i++) {
 				drawButton(&buttonsy[i], Scene);
 			}
-
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer < 120) {
@@ -2528,6 +2632,13 @@ int main(int argc, char* argv[]) {
 			} else if (timer > 120) {
 
 			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 120) {
@@ -2633,6 +2744,13 @@ int main(int argc, char* argv[]) {
 					timer3 = 0.0f;
 				}
 			}
+			if (schizofrenia) {
+				if (!themeon) {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				} else {
+					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+				}
+			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
@@ -2686,12 +2804,17 @@ int main(int argc, char* argv[]) {
 			snprintf(memeText, sizeof(memeText), "GPU: %.2f%%", drawUsage);
 			C2D_TextParse(&memtext[1], memBuf, memeText);
 			C2D_TextOptimize(&memtext[1]);
-			C2D_DrawText(&memtext[1], C2D_AlignLeft | C2D_WithColor, 20, 55, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
-			C2D_DrawText(&g_totpText[0], C2D_AlignLeft | C2D_WithColor, 290, 20, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
-			C2D_DrawText(&g_totpText[1], C2D_AlignLeft | C2D_WithColor, 290, 35, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
-			C2D_DrawText(&g_totpText[2], C2D_AlignLeft | C2D_WithColor, 290, 50, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
-			C2D_DrawText(&g_totpText[3], C2D_AlignLeft | C2D_WithColor, 290, 65, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
-			C2D_DrawText(&g_totpText[4], C2D_AlignLeft | C2D_WithColor, 290, 80, 0.4f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			char wygText[64];
+			snprintf(wygText, sizeof(wygText), "EXP: %lld", czas_wygasniecia);
+			C2D_TextParse(&memtext[2], memBuf, wygText);
+			C2D_TextOptimize(&memtext[2]);
+			C2D_DrawText(&memtext[1], C2D_AlignLeft | C2D_WithColor, 20, 55, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[0], C2D_AlignLeft | C2D_WithColor, 265, 10, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[1], C2D_AlignLeft | C2D_WithColor, 265, 25, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[2], C2D_AlignLeft | C2D_WithColor, 265, 40, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[3], C2D_AlignLeft | C2D_WithColor, 265, 55, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&g_totpText[4], C2D_AlignLeft | C2D_WithColor, 265, 70, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+			C2D_DrawText(&memtext[2], C2D_AlignLeft | C2D_WithColor, 265, 85, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 		}
 
 

@@ -172,7 +172,9 @@ extern void refresh_data(const char *url, const char *data, struct curl_slist *h
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 		log_to_file("[refresh_data] Set Headers... ");
 		print_headers(headers);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+		if (strcmp(url, "https://zabka-snrs.zabka.pl/v4/server/time") != 0) {
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+		}
 		log_to_file("[refresh_data] Set Data... %s", data);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 		log_to_file("[refresh_data] Set CallbackFunc...", data);

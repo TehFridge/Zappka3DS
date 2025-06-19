@@ -11,6 +11,7 @@
 #include "request.h"
 #include "buttons.h"
 #include "zappka_totp_qr.h"
+#include "mbedtls/base64.h"
 #include <time.h>
 #define LOG_FILE "curl_log.txt"
 extern bool offermachen;
@@ -21,10 +22,12 @@ extern char *ploy_iden;
 extern char ploy_iden_2[25];
 extern bool activated;
 extern bool aktywacja_done;
+extern time_t czas_wygasniecia;
 typedef struct {
     void* data;
     size_t size;
 } ResponseMachen;
+time_t dawaj_expire_time(const char *jwt);
 time_t snrs_czas();
 void removeTrailingNewline(char* str);
 void wrapText(const char* input, int maxWidth, char* output);

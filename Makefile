@@ -31,7 +31,7 @@ include $(DEVKITARM)/3ds_rules
 #     - icon.png
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
-TARGET		:=	Zappka3DS_FinalBeta4
+TARGET		:=	Zappka3DS
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
@@ -40,11 +40,10 @@ GRAPHICS	:=	gfx
 ROMFS		:=	romfs
 GFXBUILD	:=	$(ROMFS)/gfx
 #---------------------------------------------------------------------------------
-APP_VER				:= 1
+APP_VER				:= 2048
 APP_TITLE			:= Zappka3DS
 APP_DESCRIPTION		:= Zappka na Nintendo 3DS
 APP_AUTHOR			:= TehFridge
-APP_VERSION			:= 1.0.0
 PRODUCT_CODE		:= ZAPP3DS
 UNIQUE_ID			:= 0xEC900
 
@@ -70,7 +69,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= `curl-config --libs` -lcitro2d -lcitro3d -lctru -lm `$(PREFIX)pkg-config vorbisidec --libs` -lcwav -lncsnd -ljansson 
+LIBS	:= `curl-config --libs` -lcitro2d -lcitro3d -lctru -lm `$(PREFIX)pkg-config vorbisidec --libs` -lcwav -lncsnd -ljansson -lmbedtls -lmbedcrypto
 
 
 #---------------------------------------------------------------------------------

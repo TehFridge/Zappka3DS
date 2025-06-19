@@ -50,6 +50,61 @@ const char* kurwacursor;
 char ploy_ids_bo_kurwa_reload[100][50];
 char typy_bo_kurwa_reload[100][50];
 const char* aftermachenkurw;
+time_t czas_wygasniecia;
+
+time_t dawaj_expire_time(const char *jwt) {
+    if (!jwt) return 0;
+
+    const char *first_dot = strchr(jwt, '.');
+    if (!first_dot) return 0;
+
+    const char *second_dot = strchr(first_dot + 1, '.');
+    if (!second_dot) return 0;
+
+    size_t payload_len = second_dot - (first_dot + 1);
+    if (payload_len >= 1024) return 0; // prevent buffer overflow
+
+    char payload_base64[1024];
+    strncpy(payload_base64, first_dot + 1, payload_len);
+    payload_base64[payload_len] = '\0';
+
+    // Proper base64 padding
+    size_t pad = payload_len % 4;
+    if (pad == 2)
+        strcat(payload_base64, "==");
+    else if (pad == 3)
+        strcat(payload_base64, "=");
+    else if (pad == 1)
+        return 0; // invalid base64
+
+    // Base64 decode
+    unsigned char decoded[2048];
+    size_t decoded_len;
+    int ret = mbedtls_base64_decode(decoded, sizeof(decoded), &decoded_len,
+                                    (const unsigned char *)payload_base64, strlen(payload_base64));
+    if (ret != 0) return 0;
+
+    decoded[decoded_len] = '\0'; // make sure it's null-terminated for JSON
+
+    json_error_t error;
+    json_t *root = json_loads((const char *)decoded, 0, &error);
+    if (!root) return 0;
+
+    // "exp" might be in root or inside "data"
+    json_t *exp_obj = json_object_get(root, "exp");
+    if (!exp_obj) {
+        json_t *data = json_object_get(root, "data");
+        if (data) exp_obj = json_object_get(data, "exp");
+    }
+
+    time_t exp_time = 0;
+    if (exp_obj && json_is_integer(exp_obj)) {
+        exp_time = (time_t)json_integer_value(exp_obj);
+    }
+
+    json_decref(root);
+    return exp_time;
+}
 time_t portable_timegm(struct tm *tm) {
     char *tz = getenv("TZ");
     setenv("TZ", "", 1); // Force UTC
@@ -59,32 +114,53 @@ time_t portable_timegm(struct tm *tm) {
     tzset();
     return ret;
 }
-time_t snrs_czas(){
+time_t snrs_czas() {
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-    headers = curl_slist_append(headers, "User-Agent: okhttp/4.12.0");
-
-    headers = curl_slist_append(headers, "Accept: application/json");
 
     refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", headers);
-    const char *time_str_start = strstr(global_response.data, "\"serverTime\": \"") + strlen("\"serverTime\": \"");
-    char time_str[25];
-    strncpy(time_str, time_str_start, 24); // "2025-05-05T10:40:58.847Z"
-    time_str[24] = '\0'; // null-terminate
 
-    // Extract components
+    const char *key = "\"serverTime\": \"";
+    const char *start = strstr(global_response.data, key);
+    if (!start) {
+        printf("Error: serverTime key not found in response\n");
+        return 0;
+    }
+
+    start += strlen(key);
+    const char *end = strchr(start, '"');
+    if (!end || (end - start >= 32)) {
+        printf("Error: malformed serverTime format\n");
+        return 0;
+    }
+
+    char time_str[32] = {0};
+    strncpy(time_str, start, end - start);
+    time_str[end - start] = '\0';
+
+    // Expected format: "2025-06-17T14:49:24.384Z"
     struct tm t = {0};
-    int millis;
-    sscanf(time_str, "%4d-%2d-%2dT%2d:%2d:%2d.%3dZ",
-           &t.tm_year, &t.tm_mon, &t.tm_mday,
-           &t.tm_hour, &t.tm_min, &t.tm_sec, &millis);
+    int millis = 0;
+    int parsed = sscanf(time_str, "%4d-%2d-%2dT%2d:%2d:%2d.%3dZ",
+                        &t.tm_year, &t.tm_mon, &t.tm_mday,
+                        &t.tm_hour, &t.tm_min, &t.tm_sec, &millis);
 
-    t.tm_year -= 1900; // struct tm expects years since 1900
-    t.tm_mon  -= 1;    // struct tm expects months 0-11
+    if (parsed < 6) {
+        printf("Error: Failed to parse time string: %s\n", time_str);
+        return 0;
+    }
+
+    t.tm_year -= 1900;
+    t.tm_mon  -= 1;
 
     time_t unix_time = portable_timegm(&t);
-	return unix_time;
+    if (unix_time == (time_t)(-1)) {
+        printf("Error: portable_timegm failed\n");
+        return 0;
+    }
+	
+    return unix_time;
 }
+
 void removeTrailingNewline(char* str) {
     size_t len = strlen(str);
     if (len > 0 && str[len - 1] == '\n') {
@@ -998,7 +1074,11 @@ void getcard(const char* mejntoken, const char* refrenentokenenkurwen) {
     }
 }
 void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen) {
-
+	consoleClear();
+	const char* msg = "Pobieranie potrzebnych danych...";
+	int x = (50 - strlen(msg)) / 2;
+	int y = 30 / 2;
+	printf("\x1b[%d;%dH%s", y, x, msg);  // ANSI escape to move cursor to (y, x)
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
     
@@ -1118,6 +1198,10 @@ void updateploy(const char* mejntoken, const char* refrenentokenenkurwen) {
 }
 
 void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen) {
+	const char* msg = "Sprawdzanie poprawnosci tokena...";
+	int x = (50 - strlen(msg)) / 2;
+	int y = 30 / 2;
+	printf("\x1b[%d;%dH%s", y, x, msg);  // ANSI escape to move cursor to (y, x)
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
 
@@ -1164,9 +1248,11 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 				if (response_root) {
 					json_t *refresh_tokent = json_object_get(response_root, "refresh_token");
 					json_t *access_tokent = json_object_get(response_root, "access_token");
+				
 					id_tokenk = strdup(json_string_value(access_tokent));
 					refreshtoken = strdup(json_string_value(refresh_tokent));
-
+					czas_wygasniecia = dawaj_expire_time(id_tokenk);
+					
 					json_decref(response_root);
 					json_t *fajlroot = json_load_file("/3ds/data.json", 0, NULL);
 					json_object_set_new(fajlroot, "token", json_string(id_tokenk));
@@ -1180,6 +1266,7 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 			curl_slist_free_all(headers);
 			headers = NULL;
 		} else {
+			czas_wygasniecia = dawaj_expire_time(mejntoken);
 			getzappsy_startup(id_tokenk, refreshtoken);
 			getcard(id_tokenk, refreshtoken);
 		}
@@ -1254,6 +1341,7 @@ void login_flow(const char *phone_number, const char *verification_code) {
 			json_t *refresh_token_json = json_object_get(response_root, "refreshToken");
 			if (custom_token_json && json_is_string(custom_token_json)) {
 				id_tokenk = strdup(json_string_value(custom_token_json));
+				czas_wygasniecia = dawaj_expire_time(id_tokenk);
 				refreshtoken = strdup(json_string_value(refresh_token_json));
 				printf("Extracted idToken: %s\n", id_tokenk);
 			} else {
