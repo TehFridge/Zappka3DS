@@ -121,6 +121,56 @@ void createDirectory(const char* dirPath) {
     }
     FSUSER_CloseArchive(sdmcArchive);
 }
+C2D_SpriteSheet zaba_frames;
+float zaba_x = 0.0f;
+int zaba_dir = -1;
+u64 lastFrameTime = 0;
+int currentFrame = 0;
+
+void zaba(float scale) {
+	u64 now = osGetTime();
+
+	// Animate
+	if (now - lastFrameTime >= 1000 / 12) {
+		currentFrame = (currentFrame + 1) % 3;
+		lastFrameTime = now;
+	}
+
+	// Get current frame image
+	C2D_Image frameImage = C2D_SpriteSheetGetImage(zaba_frames, currentFrame);
+	float imageWidth = frameImage.subtex->width;
+
+	// Move
+	zaba_x += 1.0f * zaba_dir;
+
+	// Clamp and flip
+	if (zaba_x > 500 - (imageWidth * scale)) {
+		zaba_x = 500 - (imageWidth * scale);
+		zaba_dir = -1;
+	} else if (zaba_x < -200) {
+		zaba_x = -200;
+		zaba_dir = 1;
+	}
+
+	// Flip logic
+	float drawX = zaba_x;
+	float scaleX = scale;
+
+	if (zaba_dir == -1) {
+		scaleX = -scale;
+		drawX += imageWidth * scale; // correct mirrored anchor
+	}
+
+	// Draw
+	C2D_DrawImageAtRotated(
+		frameImage,
+		drawX, 218,
+		1.0f,
+		0.0f,
+		NULL,
+		-scaleX, scale
+	);
+}
 
 void drawShadowedText(C2D_Text* text, float x, float y, float depth, float scaleX, float scaleY, u32 color, u32 shadowColor) {
     static const float shadowOffsets[4][2] = {
@@ -857,7 +907,8 @@ int main(int argc, char* argv[]) {
 		logout_buttons = C2D_SpriteSheetLoad("romfs:/gfx/logout_buttons.t3x");
 		more_b = C2D_SpriteSheetLoad("romfs:/gfx/more.t3x");
 		themename_border = C2D_SpriteSheetLoad("romfs:/gfx/themename_border.t3x");
-
+		zaba_frames = C2D_SpriteSheetLoad("romfs:/gfx/zaba_anim.t3x");
+		
 		scrollbar = C2D_SpriteSheetGetImage(scrollbarsheet, 0);
 		bgtop = C2D_SpriteSheetGetImage(background_top, 0);
 		bgdown = C2D_SpriteSheetGetImage(background_down, 0);
@@ -915,6 +966,7 @@ int main(int argc, char* argv[]) {
 		LOAD_SPRITE(logout_buttons, "logout_buttons.t3x");
 		LOAD_SPRITE(more_b, "more.t3x");
 		LOAD_SPRITE(themename_border, "themename_border.t3x");
+		LOAD_SPRITE(zaba_frames, "zaba_anim.t3x");
 
 		scrollbar = C2D_SpriteSheetGetImage(scrollbarsheet, 0);
 		bgtop = C2D_SpriteSheetGetImage(background_top, 0);
@@ -1306,6 +1358,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1374,6 +1427,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1457,6 +1511,8 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1539,6 +1595,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1646,6 +1703,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1713,6 +1771,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1758,6 +1817,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1802,6 +1862,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1882,6 +1943,7 @@ int main(int argc, char* argv[]) {
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -1960,6 +2022,7 @@ int main(int argc, char* argv[]) {
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -2054,6 +2117,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -2146,6 +2210,7 @@ int main(int argc, char* argv[]) {
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -2285,6 +2350,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x74, 0x1d, 0x4a, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -2473,6 +2539,7 @@ int main(int argc, char* argv[]) {
 
 				C2D_DrawImage(kuponkurwa, &params, NULL);
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -2649,6 +2716,7 @@ int main(int argc, char* argv[]) {
 					drawShadowedText(&g_staticText[14], 200.0f, currentY + 80, 0.5f, 2.5f, 2.5f, themeBaseColor, themeoutColor);
 				}
 			}
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
@@ -2753,6 +2821,7 @@ int main(int argc, char* argv[]) {
 			}
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
+			zaba(0.25f);
             C2D_TargetClear(bottom, C2D_Color32f(0.0f, 0.0f, 0.0f, 1.0f));
             C2D_SceneBegin(bottom);
 
