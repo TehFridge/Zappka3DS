@@ -1,2 +1,2 @@
---atlas -f rgba8888 -z auto
+--atlas -f rgba5551 -z auto
 zappsy_bar.png
