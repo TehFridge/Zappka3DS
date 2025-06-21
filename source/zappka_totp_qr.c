@@ -111,7 +111,9 @@ int compute_magic_number(const char *secretHex) {
 
     time_t t = calibrate_czas();
 	if (t > czas_wygasniecia) {
-		sprawdzajtokenasa(id_tokenk, refreshtoken);
+		if (is_network_connected()){
+			sprawdzajtokenasa(id_tokenk, refreshtoken);
+		}
 	}
 	//save_calczas();
     int ts = (int)(t / 30);

@@ -6,6 +6,7 @@
 #include <citro2d.h>
 #include "zappka_totp_qr.h"
 #include "zappka_api_processing.h"
+#include "main.h"
 #include <jansson.h>
 typedef struct {
     C3D_Tex *buff;
