@@ -665,6 +665,7 @@ int main(int argc, char* argv[]) {
 	json_t *jsonfl;
     Result ret;
 	init_logger();
+	logplz = true;
     SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
 	if(SOC_buffer == NULL) {
 		printf("memalign: failed to allocate\n");
@@ -676,9 +677,10 @@ int main(int argc, char* argv[]) {
 	C2D_TextBuf memBuf = C2D_TextBufNew(128);
 	C2D_Text memtext[100];
 	start_request_thread();
+	log_to_file("[Żappka3DS] Sprawdzam dane.\n");
 	if (access("/3ds/data.json", F_OK) == 0) {
 		isLogged = true;
-
+		log_to_file("[Żappka3DS] Zalogowany.\n");
 	    jsonfl = json_load_file("/3ds/data.json", 0, NULL);
 		json_t *tempajd = json_object_get(jsonfl, "user_id");
 		json_t *nwmsecret = json_object_get(jsonfl, "hex_secret");
@@ -688,6 +690,7 @@ int main(int argc, char* argv[]) {
 		json_t *ajdentokenen = json_object_get(jsonfl, "token");
 		json_t *has_nano = json_object_get(jsonfl, "has_nano");
 		if (!tempajd || !nwmsecret || !nwmsecretnano || !nejmen || !has_nano) {
+			log_to_file("[Żappka3DS] Brakuje danych, usuwam.\n");
 			isLogged = false;
 			json_decref(jsonfl);
 			remove("/3ds/data.json");
@@ -709,6 +712,7 @@ int main(int argc, char* argv[]) {
 			doBasicDemo(&qrImage, otpen, userajd);
 			if (!citra_machen) {
 				if (is_network_connected()) {
+					log_to_file("[Żappka3DS] Sprawdzam token.\n");
 					sprawdzajtokenasa(id_tokenk, refreshtoken);
 				}
 
@@ -716,12 +720,14 @@ int main(int argc, char* argv[]) {
 				json_error_t error;
 
 				if (access("/3ds/czas.json", F_OK) == 0) {
+					log_to_file("[Żappka3DS] Aktualizuje czas.\n");
 					czroot = json_load_file("/3ds/czas.json", 0, &error);
 					if (!czroot) {
 						//printf("Failed to load czas.json: %s\n", error.text);
 						czroot = json_object();
 					}
 				} else {
+					log_to_file("[Żappka3DS] Brak danych czasu, pobieram.\n");
 					czroot = json_object();
 				}
 
@@ -730,12 +736,15 @@ int main(int argc, char* argv[]) {
 				}
 
 				if (is_network_connected()) {
+					log_to_file("[Żappka3DS] Jest Internet, pobieram czas z sieci.\n");
 					time_t serw = snrs_czas();
 					json_object_set_new(czroot, "onlineczas", json_integer(serw));
 				}
+				log_to_file("[Żappka3DS] Pobieram czas lokalny.\n");
 				json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
 
 				if (json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT) != 0) {
+					log_to_file("[Żappka3DS] Z jakiegoś powodu czas sie nie zapisał.\n");
 					printf("Failed to write czas.json\n");
 				}
 
@@ -753,6 +762,40 @@ int main(int argc, char* argv[]) {
 
 	} else {
 		isLogged = false;
+		log_to_file("[Żappka3DS] Niezalogowany :p .\n");
+		json_t *czroot = NULL;
+		json_error_t error;
+
+		if (access("/3ds/czas.json", F_OK) == 0) {
+			log_to_file("[Żappka3DS] Aktualizuje czas.\n");
+			czroot = json_load_file("/3ds/czas.json", 0, &error);
+			if (!czroot) {
+				//printf("Failed to load czas.json: %s\n", error.text);
+				czroot = json_object();
+			}
+		} else {
+			log_to_file("[Żappka3DS] Brak danych czasu, pobieram.\n");
+			czroot = json_object();
+		}
+
+		if (!czroot) {
+			printf("Failed to create or load JSON object.\n");
+		}
+
+		if (is_network_connected()) {
+			log_to_file("[Żappka3DS] Jest Internet, pobieram czas z sieci.\n");
+			time_t serw = snrs_czas();
+			json_object_set_new(czroot, "onlineczas", json_integer(serw));
+		}
+		log_to_file("[Żappka3DS] Pobieram czas lokalny.\n");
+		json_object_set_new(czroot, "localczas", json_integer(time(NULL)));
+
+		if (json_dump_file(czroot, "/3ds/czas.json", JSON_COMPACT) != 0) {
+			log_to_file("[Żappka3DS] Z jakiegoś powodu czas sie nie zapisał.\n");
+			printf("Failed to write czas.json\n");
+		}
+
+		json_decref(czroot);
 	}
     char* url;
     char* body;
@@ -763,8 +806,10 @@ int main(int argc, char* argv[]) {
 	}
 	consoleClear();
 	if (is_network_connected()) {
+		log_to_file("[Żappka3DS] Sprawdzam czy czas konsoli jest poprawny.\n");
 		refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", NULL);
 		if (czasfuckup) {
+			log_to_file("[Żappka3DS] Czas jest zjebany, napraw plz.\n");
 			const char* msg = "Zle ustawienia czasu!";
 			const char* msg2 = "W Rosalina Menu zrob:";
 			const char* msg3 = "Misc. Settings > Set Time via NTP";
@@ -1063,6 +1108,7 @@ int main(int argc, char* argv[]) {
 	const float splashHopDuration = 0.8f; // Total hop time
 	int transpar = 255;
 	int transpar2 = 0;
+	logplz = false;
     while(aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
