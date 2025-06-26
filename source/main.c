@@ -751,7 +751,9 @@ int main(int argc, char* argv[]) {
 	consoleClear();
 	bool time_broken = false;
 	log_to_file("[Żappka3DS] Sprawdzam czy czas konsoli jest poprawny.\n");
-	time_broken = refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", NULL);
+	if (access("/3ds/data.json", F_OK) != 0) {
+		time_broken = refresh_data("https://zabka-snrs.zabka.pl/v4/server/time", "", NULL);
+	}
 	if (time_broken) {
 		log_to_file("[Żappka3DS] Czas jest zjebany, napraw plz.\n");
 		const char* msg = "Zle ustawienia czasu!";
