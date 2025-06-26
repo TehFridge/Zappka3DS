@@ -42,7 +42,7 @@ void log_message(const char *format, ...);
 void safe_free_global_response();
 void log_request_to_file(const char *url, const char *data, struct curl_slist *headers, char *response);
 void load_image();
-extern void refresh_data(const char *url, const char *data, struct curl_slist *headers);
+bool refresh_data(const char *url, const char *data, struct curl_slist *headers);
 void request_worker(void* arg);
 
 void queue_request(const char *url, const char *data, struct curl_slist *headers, void **response, size_t *response_size, LightEvent *event, bool is_binary);
