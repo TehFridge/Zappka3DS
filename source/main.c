@@ -47,7 +47,7 @@ char *zabkazonefeed = NULL;
 extern bool json_done;
 bool themeon;
 int currenttheme;
-extern CWAVInfo cwavList[8];
+extern CWAVInfo cwavList[99];
 extern int cwavCount;
 bool internet_available = false;
 static Thread internet_thread;
@@ -73,6 +73,7 @@ extern const char *id_tokenk;
 const char *numertelefonen = NULL;
 extern const char *refreshtoken;
 int Scene;
+bool VOICEACT;
 extern const char *userajd;
 extern const char *usernan;
 const char *nejmenmachen;
@@ -314,7 +315,7 @@ void send_verification_code(const char *nrtel, const char *id_token) {
 
 
         headers = curl_slist_append(headers, "Content-Type: application/json");
-        char auth_header[1024];
+        char auth_header[2048];
         snprintf(auth_header, sizeof(auth_header), "Authorization: %s", id_token);
         headers = curl_slist_append(headers, auth_header);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -471,6 +472,8 @@ void rebuild_buffer() {
     C2D_TextOptimize(&g_staticText[15]);
 	C2D_TextFontParse(&g_staticText[16], font[0], g_staticBuf, "(Zrestartuj aplikacje by zapisać zmiany)");
     C2D_TextOptimize(&g_staticText[16]);
+	C2D_TextFontParse(&g_staticText[17], font[0], g_staticBuf, "VA");
+    C2D_TextOptimize(&g_staticText[17]);
 }
 void process_json_response() {
     if (global_response.data) {
@@ -630,6 +633,17 @@ void kodQR() {
 	generate_qrcode();
 
 }
+void playSoundOncePerScene(int sceneID, int soundIndex) {
+    static int lastScenePlayed = -1;
+
+    if (lastScenePlayed != sceneID) {
+        CWAV* sfx_va = cwavList[soundIndex].cwav;
+        cwavPlay(sfx_va, 0, -1);
+        lastScenePlayed = sceneID;
+    }
+}
+
+
 void wyloguj() {
 	remove("/3ds/data.json");
 	przycskmachen = false;
@@ -688,6 +702,18 @@ int main(int argc, char* argv[]) {
 	start_request_thread();
 	svcSleepThread(100000000);
 	log_to_file("[Żappka3DS] Sprawdzam dane.\n");
+	if (access("/3ds/opcje.json", F_OK) == 0){
+		json_t *jsonfl = json_load_file("/3ds/opcje.json", 0, NULL);
+		json_t *czyjest = json_object_get(jsonfl, "va");
+		VOICEACT = json_boolean_value(czyjest);
+		json_decref(jsonfl);
+	} else {
+		VOICEACT = true;
+		json_t *oproot = json_object();
+		json_object_set_new(oproot, "va", json_boolean(VOICEACT));
+		json_dump_file(oproot, "/3ds/opcje.json", JSON_COMPACT);
+		json_decref(oproot);
+	}
 	if (access("/3ds/data.json", F_OK) == 0) {
 		isLogged = true;
 		log_to_file("[Żappka3DS] Zalogowany.\n");
@@ -1059,14 +1085,17 @@ int main(int argc, char* argv[]) {
     C2D_TextOptimize(&g_staticText[15]);
 	C2D_TextFontParse(&g_staticText[16], font[0], g_staticBuf, "(Zrestartuj aplikacje by zapisać zmiany)");
     C2D_TextOptimize(&g_staticText[16]);
+	C2D_TextFontParse(&g_staticText[17], font[0], g_staticBuf, "VA");
+    C2D_TextOptimize(&g_staticText[17]);
 	CWAV* bgm = cwavList[1].cwav;
 	CWAV* loginbgm = cwavList[2].cwav;
 	CWAV* menu = day ? cwavList[3].cwav : cwavList[5].cwav;
 	CWAV* splashb = cwavList[4].cwav;
+
 	if (!day) {
 		menu->volume = 0.4f;
 	} else {
-		menu->volume = 0.6f;
+		menu->volume = 0.45f;
 	}
 
 	int textOffset = 0;
@@ -1175,6 +1204,9 @@ int main(int argc, char* argv[]) {
 				cpu_debug = true;
 				logplz = true;
 			}
+		}
+		if (kDown & KEY_R) {
+			VOICEACT = !VOICEACT;
 		}
         if (kDown & KEY_A) {
             if (Scene == 1 & timer > 40) {
@@ -1376,6 +1408,10 @@ int main(int argc, char* argv[]) {
 
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
             C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
+			if (VOICEACT) {
+				playSoundOncePerScene(1, 17);
+			}
+			
 			if (schizofrenia) {
 				if (!themeon) {
 					drawShadowedText_noncentered(&g_staticText[11], 0.0f, 0 + 215.0f, 0.5f, 0.8f, 0.8f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
@@ -1438,6 +1474,9 @@ int main(int argc, char* argv[]) {
             C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0xff, 0xff, 0xff, timer2));
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
+			if (VOICEACT) {
+				playSoundOncePerScene(2, 6);
+			}
 			if (timer > 80) {
 				if (!themeon){
 					drawShadowedText(&g_staticText[2], 200.0f, currentY2 + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
@@ -1517,6 +1556,9 @@ int main(int argc, char* argv[]) {
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 80) {
+				if (VOICEACT) {
+					playSoundOncePerScene(3, 16);
+				}
 				if (!themeon){
 					drawShadowedText(&g_staticText[5], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
@@ -1601,6 +1643,9 @@ int main(int argc, char* argv[]) {
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			C2D_DrawRectSolid(0.0f,0.0f,0.0f,SCREEN_WIDTH,SCREEN_HEIGHT, C2D_Color32(0x00, 0x00, 0x00, timer3));
 			if (timer > 80) {
+				if (VOICEACT) {
+					playSoundOncePerScene(4, 14);
+				}
 				if (!themeon){
 					drawShadowedText(&g_staticText[6], 200.0f, currentY + 90.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x78, 0xc1, 0x91, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
 				} else {
@@ -1946,6 +1991,9 @@ int main(int argc, char* argv[]) {
 
             C2D_DrawImageAt(bgtop, x, y, 0.0f, NULL, 1.0f, 1.0f);
 			if (timer < 120) {
+				if (VOICEACT) {
+					playSoundOncePerScene(10, 12);
+				}
 				C2D_DrawImageAt(logo3ds, 0.0f, currentY, 0.0f, NULL, 1.0f, 1.0f);
 				C2D_DrawImageAt(statusbaren, 0.0f, -currentY, 0.0f, NULL, 1.0f, 1.0f);
 				if (!themeon) {
@@ -2437,6 +2485,9 @@ int main(int argc, char* argv[]) {
 						if (!offermachen) {
 							if (!zonefeeddone) {
 								if (requestdone) {
+									if (VOICEACT) {
+										playSoundOncePerScene(14, 9);
+									}
 									process_kupony();
 									json_done = true;
 									loadingshit = true;
@@ -2910,10 +2961,22 @@ int main(int argc, char* argv[]) {
 			C2D_DrawText(&g_totpText[4], C2D_AlignLeft | C2D_WithColor, 265, 70, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 			C2D_DrawText(&memtext[2], C2D_AlignLeft | C2D_WithColor, 265, 85, 1.0f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
 		}
+		if (VOICEACT) {
+			C2D_SceneBegin(top);
+			if (!themeon) {
+				drawShadowedText(&g_staticText[17], 380.0f, 2.0f, 0.5f, 1.0f, 1.0f, C2D_Color32(0x29, 0x6e, 0x44, 0xff), C2D_Color32(0xff, 0xff, 0xff, 0xff));
+			} else {
+				drawShadowedText(&g_staticText[17], 380.0f, 2.0f, 0.5f, 1.0f, 1.0f, themeBaseColor, themeoutColor);
 
+			}
+		}
 
 		C3D_FrameEnd(0);
 	}
+	json_t *opcjee = json_load_file("/3ds/opcje.json", 0, NULL);
+	json_object_set_new(opcjee, "va", json_boolean(VOICEACT));
+	json_dump_file(opcjee, "/3ds/opcje.json", JSON_COMPACT);
+	json_decref(opcjee);
 	close_logger();
     running = false;
 	save_calczas();

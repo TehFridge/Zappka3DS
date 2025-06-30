@@ -64,7 +64,7 @@ time_t dawaj_expire_time(const char *jwt) {
     size_t payload_len = second_dot - (first_dot + 1);
     if (payload_len >= 1024) return 0; // prevent buffer overflow
 
-    char payload_base64[1024];
+    char payload_base64[2048];
     strncpy(payload_base64, first_dot + 1, payload_len);
     payload_base64[payload_len] = '\0';
 
@@ -273,7 +273,7 @@ void update_promki(const char* mejntoken, const char* refrenentokenenkurwen) {
 
     headers = curl_slist_append(headers, "Accept: application/json");
 
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -320,7 +320,7 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
 
     headers = curl_slist_append(headers, "Accept: application/json");
 
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -446,7 +446,7 @@ void activate_coupon(const char* mejntoken, const char* refrenentokenenkurwen) {
 
     headers = curl_slist_append(headers, "Accept: application/json");
 
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -1045,7 +1045,7 @@ void getcard(const char* mejntoken, const char* refrenentokenenkurwen) {
     headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
     headers = curl_slist_append(headers, "Accept: application/json");
 
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -1096,7 +1096,7 @@ void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen)
     headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
     headers = curl_slist_append(headers, "Accept: application/json");
 
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -1149,7 +1149,7 @@ void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen) {
     headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
     headers = curl_slist_append(headers, "Accept: application/json");
 
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -1183,7 +1183,7 @@ void updateploy(const char* mejntoken, const char* refrenentokenenkurwen) {
     headers = curl_slist_append(headers, "Accept: application/json");
     headers = curl_slist_append(headers, "Accept: application/json");
 
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -1217,7 +1217,7 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
     headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
     headers = curl_slist_append(headers, "X-Apollo-Operation-Name: LoyaltyPoints");
     headers = curl_slist_append(headers, "Accept: application/json");
-    char auth_headeren[1024];
+    char auth_headeren[2048];
     snprintf(auth_headeren, sizeof(auth_headeren), "Authorization: Bearer %s", mejntoken);
     headers = curl_slist_append(headers, auth_headeren);
 
@@ -1272,7 +1272,27 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 		}
 	}
 }
+void generate_uuid_v4(char *uuid_str) {
+    uint8_t uuid[16];
+    
+    // Replace with a proper RNG in production!
+    for (int i = 0; i < 16; i++) {
+        uuid[i] = rand() % 256;
+    }
 
+    // Set version (4) and variant (RFC 4122)
+    uuid[6] = (uuid[6] & 0x0F) | 0x40;  // version 4
+    uuid[8] = (uuid[8] & 0x3F) | 0x80;  // variant
+
+    // Format UUID string
+    sprintf(uuid_str,
+            "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+            uuid[0], uuid[1], uuid[2], uuid[3],
+            uuid[4], uuid[5],
+            uuid[6], uuid[7],
+            uuid[8], uuid[9],
+            uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
+}
 void login_flow(const char *phone_number, const char *verification_code) {
 
     json_t *root = json_object();
@@ -1299,7 +1319,7 @@ void login_flow(const char *phone_number, const char *verification_code) {
     headers = curl_slist_append(headers, "X-Apollo-Operation-Id: a531998ec966db0951239efb91519560346cfecac77459fe3b85c5b786fa41de");
     headers = curl_slist_append(headers, "X-Apollo-Operation-Name: SignInWithPhone");
     headers = curl_slist_append(headers, "Accept: application/json");
-    char auth_header[1024];
+    char auth_header[2048];
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", id_tokenk);
     headers = curl_slist_append(headers, auth_header);
 
@@ -1374,8 +1394,10 @@ void login_flow(const char *phone_number, const char *verification_code) {
 
 		variables = json_object();
 		json_t *signInInput = json_object();
-
-		json_object_set_new(signInInput, "sessionId", json_string("65da013a-0d7d-3ad4-82bd-2bc15077d7f5"));
+		srand(time(NULL)); // Or use better RNG if needed
+		char uuid[37];     // 36 chars + null terminator
+		generate_uuid_v4(uuid);
+		json_object_set_new(signInInput, "sessionId", json_string(uuid));
 		json_object_set_new(variables, "signInInput", signInInput);
 
 		json_object_set_new(root, "operationName", json_string("SignIn"));

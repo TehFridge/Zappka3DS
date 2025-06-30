@@ -151,6 +151,21 @@ void print_headers(struct curl_slist *headers) {
     }
 }
 bool czasfuckup = false;
+int my_curl_debug_callback(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr) {
+    switch (type) {
+        case CURLINFO_TEXT:
+        case CURLINFO_HEADER_IN:
+        case CURLINFO_HEADER_OUT:
+        case CURLINFO_DATA_IN:
+        case CURLINFO_DATA_OUT:
+            log_to_file("[curl_debug] %.*s", (int)size, data);
+            break;
+        default:
+            break;
+    }
+    return 0;
+}
+
 
 bool refresh_data(const char *url, const char *data, struct curl_slist *headers) {
     bool request_failed = false;
@@ -162,7 +177,27 @@ bool refresh_data(const char *url, const char *data, struct curl_slist *headers)
     if (!url) {
         log_to_file("[refresh_data] ERROR: URL is NULL.");
     }
-	log_to_file("[refresh_data] Connecting to: %s", url);
+
+    log_to_file("[refresh_data] --- HTTP REQUEST BEGIN ---");
+    log_to_file("[refresh_data] URL: %s", url);
+
+    // Log headers
+    log_to_file("[refresh_data] Headers:");
+    struct curl_slist *header_iter = headers;
+    while (header_iter) {
+        log_to_file("  %s", header_iter->data);
+        header_iter = header_iter->next;
+    }
+
+    // Log body if present
+    if (data && strcmp(url, "https://zabka-snrs.zabka.pl/v4/server/time") != 0) {
+        log_to_file("[refresh_data] Body:\n%s", data);
+    } else {
+        log_to_file("[refresh_data] Body: (none or skipped)");
+    }
+
+    log_to_file("[refresh_data] --- HTTP REQUEST END ---");
+
     safe_free_global_response();
 
     CURL *curl = curl_easy_init();
@@ -170,7 +205,8 @@ bool refresh_data(const char *url, const char *data, struct curl_slist *headers)
         log_to_file("[refresh_data] ERROR: curl_easy_init() failed.");
     }
 
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_curl_debug_callback);
     curl_easy_setopt(curl, CURLOPT_CAINFO, "romfs:/cacert.pem");
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -203,9 +239,11 @@ bool refresh_data(const char *url, const char *data, struct curl_slist *headers)
     if (strstr(url, "szprink") && global_response.data && global_response.size > 0) {
         need_to_load_image = true;
     }
-	log_to_file("[refresh_data] Request Done");
-	return request_failed;
+
+    log_to_file("[refresh_data] Request Done");
+    return request_failed;
 }
+
 
 void request_worker(void* arg) {
     while (request_running) {

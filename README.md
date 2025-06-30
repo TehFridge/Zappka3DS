@@ -1,3 +1,5 @@
+[Release Trailer](https://www.youtube.com/watch?v=NXumTBJQcIE)  |  [Discord 3(DS) Polska](http://discord.gg/Rxf9FR9DaS)
+
 # Zdobywaj Żappsy™ prosto i unikalnie Żappka3DS
 
 ![dfgsdfgssdfg](https://github.com/user-attachments/assets/5b1f3040-feec-4fc8-9c78-f5d646f19fa9)
