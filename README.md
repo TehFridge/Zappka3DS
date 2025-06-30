@@ -12,7 +12,7 @@ UI/Graphic Design: [prycwrn](https://prycwrn.space/)
 
 BGM: [prycwrn](https://prycwrn.space/), [Ludwik Franke](https://soundcloud.com/ludwikfranke_crazy), [TehFridge](https://linktr.ee/tehfridge)
 
-"Voiceline'y Nawigacyjne": [Laura](https://nekodoesntexists.carrd.co/)
+"Voiceline'y Nawigacyjne": [n3k0](https://nekodoesntexists.carrd.co/)
 
 Dodatkowe grafiki ~~i wsparcie mentalne~~: [Reichisan](https://www.twitch.tv/reichisan)
 
