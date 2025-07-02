@@ -7,6 +7,8 @@ extern int Scene;
 extern float startY;
 extern float elapsed;
 extern float endY;
+bool no_subcategories_flag[200];
+bool subcatin;
 extern Button buttonsy[100];
 bool readingoferta = false;
 bool offermachen = false;
@@ -22,7 +24,10 @@ extern long response_code;
 bool ofertanow = false;
 bool przycskmachen = false;
 extern bool loadingshit;
+char *mainName;
+const char *subName;
 char *ploy_iden = NULL;
+char *ploy_keyen = NULL;
 extern const char *nejmenmachen;
 const char *userajd;
 const char* secrettotpglobal;
@@ -51,7 +56,15 @@ char ploy_ids_bo_kurwa_reload[100][50];
 char typy_bo_kurwa_reload[100][50];
 const char* aftermachenkurw;
 time_t czas_wygasniecia;
+typedef struct {
+    char *id;
+    char *key;
+    char *title;
+    char *typename;
+} ZoneEntry;
 
+ZoneEntry *zone_entries = NULL;
+size_t zone_count = 0;
 time_t dawaj_expire_time(const char *jwt) {
     if (!jwt) return 0;
 
@@ -202,12 +215,78 @@ void wrapText(const char* input, int maxWidth, char* output) {
 
     *outPtr = '\0';  
 }
-void updateprom() {
-	for (int i = 0; i < 30; i++) {
-		if (ploy_ids_bo_kurwa_reload[i][0] != '\0') {
-			log_to_file("%d: %s ", i, ploy_ids_bo_kurwa_reload[i]);
+const char *kuponid;
+char* get_id_of_subcategory_by_name(const char* mainCategoryTitle, const char* subCategoryTitle) {
+    if (!global_response.data) return NULL;
+
+    json_error_t err;
+    json_t *root = json_loads(global_response.data, 0, &err);
+    if (!root) {
+        log_to_file("JSON parse error: %s", err.text);
+        return NULL;
+    }
+
+    json_t *data = json_object_get(root, "data");
+    json_t *zoneTree = json_object_get(data, "zoneTree");
+    json_t *nodes = json_object_get(zoneTree, "nodes");
+
+    if (!json_is_array(nodes)) {
+        json_decref(root);
+        return NULL;
+    }
+
+    json_t *main_node = NULL;
+    size_t i;
+    json_t *node;
+	json_array_foreach(nodes, i, node) {
+		const char* type = json_string_value(json_object_get(node, "__typename"));
+		const char* title = json_string_value(json_object_get(node, "title"));
+		log_to_file("Looking for main: '%s' == '%s'?", title, mainCategoryTitle);
+
+		if (type && strcmp(type, "ZoneTree") == 0 && title && strcmp(title, mainCategoryTitle) == 0) {
+			main_node = node;
+			break;
 		}
 	}
+
+    if (!main_node) {
+        log_to_file("Main category '%s' not found.", mainCategoryTitle);
+        json_decref(root);
+        return NULL;
+    }
+
+    json_t *subnodes = json_object_get(main_node, "nodes");
+    if (!json_is_array(subnodes)) {
+        log_to_file("No 'nodes' array in main category '%s'", mainCategoryTitle);
+        json_decref(root);
+        return NULL;
+    }
+
+    size_t j;
+    json_t *subnode;
+    json_array_foreach(subnodes, j, subnode) {
+        const char* subTitle = json_string_value(json_object_get(subnode, "title"));
+        log_to_file("  → Looking for sub: '%s' == '%s'?", subTitle, subCategoryTitle);
+        if (subTitle && strcmp(subTitle, subCategoryTitle) == 0) {
+            const char *id_val = json_string_value(json_object_get(subnode, "id"));
+            if (id_val) {
+                char *result = strdup(id_val);  // caller must free
+                log_to_file("  → FOUND ID: %s", id_val);
+                json_decref(root);
+                return result;
+            }
+        }
+    }
+
+    log_to_file("Subcategory '%s' not found in main '%s'", subCategoryTitle, mainCategoryTitle);
+    json_decref(root);
+    return NULL;
+}
+
+
+void updateprom() {
+	subName = tileNames[selectioncodelol - 5];
+	//log_to_file("SUBNAME: %s", subName);
 	log_to_file("\n");
 
 	obrazekdone = false;
@@ -232,7 +311,63 @@ void updateprom() {
 	}
 
 	removeButtonEntries(70);
-	process_ids(selectioncodelol);
+	//log_to_file("JSON: %s", global_response.data);
+	if (!offermachen) {
+		if (no_subcategories_flag[selectioncodelol - 5] && !subcatin) {
+			json_t *response_root = json_loads(global_response.data, 0, NULL);
+			if (!response_root) {
+				log_to_file("ERROR: Failed to parse JSON response.");
+				printf("\nERROR: Failed to parse JSON response.");
+				free_global_response();
+				return;
+			}
+
+			json_t *data = json_object_get(response_root, "data");
+			if (!data) {
+				log_to_file("ERROR: 'data' not found in the response.");
+				json_decref(response_root);
+				return;
+			}
+
+			json_t *zoneTree = json_object_get(data, "zoneTree");
+			if (!zoneTree) {
+				log_to_file("ERROR: 'zoneTree' not found.");
+				json_decref(response_root);
+				return;
+			}
+
+			json_t *nodes = json_object_get(zoneTree, "nodes");
+			if (!nodes || !json_is_array(nodes)) {
+				log_to_file("ERROR: 'nodes' not found or not an array.");
+				json_decref(response_root);
+				return;
+			}
+
+			size_t index = selectioncodelol - 4;
+			size_t node_count = json_array_size(nodes);
+			if (index < node_count) {
+				json_t *node = json_array_get(nodes, index);
+				if (node) {
+					json_t *id_json = json_object_get(node, "id");
+					if (id_json) {
+						const char *id_str = json_string_value(id_json);
+						if (id_str) {
+							free(kuponid);  // if previously allocated
+							kuponid = strdup(id_str);  // duplicate to keep after json_decref
+						}
+					}
+				}
+			} else {
+				log_to_file("Index %zu is out of bounds (nodes count: %zu)", index, node_count);
+			}
+
+			json_decref(response_root);
+		} else {
+			kuponid = get_id_of_subcategory_by_name(mainName, subName);
+		}
+	}
+
+	aftermachenkurw = strdup(kuponid);
 	update_promki(id_tokenk, refreshtoken);
 	log_to_file("json_done: %d", json_done);
 	log_to_file("loadingshit: %d", loadingshit);
@@ -246,22 +381,22 @@ void update_promki(const char* mejntoken, const char* refrenentokenenkurwen) {
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
     if (!offermachen) {
-		if (categoryornah) {
+		if (!categoryornah) {
 			json_object_set_new(rootn, "operationName", json_string("PloyOfferListing"));
-			json_object_set_new(rootn, "query", json_string("query PloyOfferListing($ployOfferListingId: ID!, $after: String) { ployOfferListing(ployOfferListingId: $ployOfferListingId, after: $after) { __typename ...PloyOfferListingParts } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }"));
+			json_object_set_new(rootn, "query", json_string("query PloyOfferListing($ployOfferListingId: ID!, $after: String) { ployOfferListing(ployOfferListingId: $ployOfferListingId, after: $after) { __typename ...PloyOfferListingParts } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } absoluteDiscounted: discounted { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment GradientPointParts on GradientPoint { color point }  fragment RadialThemeGradientParts on RadialThemeGradient { dark { __typename ...GradientPointParts } light { __typename ...GradientPointParts } }  fragment CouponBackgroundParts on CouponBackground { __typename ... on RadialThemeGradient { __typename ...RadialThemeGradientParts } }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } price { pricePoints } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource background { __typename ...CouponBackgroundParts } __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }"));
 			json_object_set_new(rootn, "variables", variablesn);
-			json_object_set_new(variablesn, "ployOfferListingId", json_string(ploy_iden));
+			json_object_set_new(variablesn, "ployOfferListingId", json_string(kuponid));
 		} else {
-			json_object_set_new(rootn, "operationName", json_string("CategoryFeed"));
-			json_object_set_new(rootn, "query", json_string("query CategoryFeed($categoryId: ID!, $after: String) { offerCategoryFeed(offerCategoryId: $categoryId, after: $after) { offerCategory { __typename ...OfferCategoryL1Parts } title sections { __typename ... on DealCarousel { __typename ...DealCarouselParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } } pagination { cursor } } } fragment OfferCategoryL1Parts on OfferCategory { id name levels { __typename ... on OfferCategory { id name } ... on PloyOfferListing { id title } ... on ProductPromotionListing { id title } } } fragment PriceParts on Price { amount currencyCode fractionDigits } fragment ColorParts on ThemeColor { light dark } fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } } fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff } fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff } fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } } fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } } fragment HappyHourParts on HappyHour { alert validFrom validUntil } fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } } fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } } fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename } fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil } fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil } fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil } fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename } fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename } fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore } fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } } fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename } fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } } fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } } fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } } fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } } fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title } fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis } fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } } fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } } fragment CtaParts on Cta { title subtitle action { label link } id image { url } __typename } fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } } fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } } fragment OptionTileParts on OptionTile { id label link } fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } } fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }"));
+			json_object_set_new(rootn, "operationName", json_string("ContentFeed"));
+			json_object_set_new(rootn, "query", json_string("query ContentFeed($contentFeedKey: String!, $after: String) { contentFeed(contentFeedKey: $contentFeedKey, after: $after) { id key title subtitle sections { __typename ... on DealCarousel { __typename ...DealCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on ServiceSection { __typename ...ServiceSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } ... on DealListingCarousel { __typename ...DealListingCarouselParts } } pagination { cursor } } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } absoluteDiscounted: discounted { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment GradientPointParts on GradientPoint { color point }  fragment RadialThemeGradientParts on RadialThemeGradient { dark { __typename ...GradientPointParts } light { __typename ...GradientPointParts } }  fragment CouponBackgroundParts on CouponBackground { __typename ... on RadialThemeGradient { __typename ...RadialThemeGradientParts } }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } price { pricePoints } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource background { __typename ...CouponBackgroundParts } __typename }  fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename }  fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore }  fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } }  fragment OptionTileParts on OptionTile { id label link }  fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }  fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } }  fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } }  fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } }  fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title }  fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis }  fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } }  fragment RelativeProductPromotionPriceLabelParts on RelativeProductPromotionPriceLabel { percentage roundOff textColor { __typename ...ColorParts } }  fragment AbsoluteProductPromotionPriceLabelParts on AbsoluteProductPromotionPriceLabel { price { __typename ...PriceParts } roundOff textColor { __typename ...ColorParts } }  fragment LargeProductPromotionListingBannerPropertiesParts on LargeProductPromotionListingBannerProperties { image { url } }  fragment LargePloyOfferBannerPropertiesParts on LargePloyOfferBannerProperties { image { url } }  fragment MediumPloyOfferBannerPropertiesParts on MediumPloyOfferBannerProperties { image { url } }  fragment PloyOfferPriceLabelParts on PloyOfferPriceLabel { ployPrice roundOff textColor { __typename ...ColorParts } }  fragment CtaParts on Cta { title subtitle id image { url } __typename }  fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } }  fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } }  fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on ProductPromotionListingBanner { id header title validFrom validUntil exclusivity priceLabel { __typename ... on RelativeProductPromotionPriceLabel { __typename ...RelativeProductPromotionPriceLabelParts } ... on AbsoluteProductPromotionPriceLabel { __typename ...AbsoluteProductPromotionPriceLabelParts } } listingRef: productPromotionListingRef { id } properties { __typename ... on LargeProductPromotionListingBannerProperties { __typename ...LargeProductPromotionListingBannerPropertiesParts } } } ... on PloyOfferBanner { id ployOffer { __typename ...PloyOfferParts id } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } ... on MediumPloyOfferBannerProperties { __typename ...MediumPloyOfferBannerPropertiesParts } } } ... on PloyOfferListingBanner { id header title validFrom validUntil exclusivity ployOfferListingRef { id } priceLabel { __typename ...PloyOfferPriceLabelParts } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } }  fragment ServiceParts on Service { id title deepLink imageDarkMode { url } imageLightMode { url } }  fragment ServiceSectionParts on ServiceSection { id title services { __typename ...ServiceParts } }  fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }  fragment DealListingCarouselParts on DealListingCarousel { id dealListing { id title deals { __typename ...DealParts id } } properties { __typename ...ScrollCarouselPropertiesParts } }"));
 			json_object_set_new(rootn, "variables", variablesn);
-			json_object_set_new(variablesn, "categoryId", json_string(ploy_iden));
+			json_object_set_new(variablesn, "contentFeedKey", json_string(ploy_keyen));
 		}
 	} else {
 		json_object_set_new(rootn, "operationName", json_string("PloyOfferDetails"));
-		json_object_set_new(rootn, "query", json_string("query PloyOfferDetails($ployOfferId: ID!) { ployOffer(ployOfferId: $ployOfferId) { ployOffer { __typename ...PloyOfferParts id } details { __typename ...RichTextWithHeaderParts } } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment RichTextWithHeaderParts on RichTextWithHeader { header richText }"));
+		json_object_set_new(rootn, "query", json_string("query PloyOfferDetails($ployOfferId: ID!) { ployOffer(ployOfferId: $ployOfferId) { ployOffer { __typename ...PloyOfferParts id } details { __typename ...RichTextWithHeaderParts } } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } absoluteDiscounted: discounted { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment GradientPointParts on GradientPoint { color point }  fragment RadialThemeGradientParts on RadialThemeGradient { dark { __typename ...GradientPointParts } light { __typename ...GradientPointParts } }  fragment CouponBackgroundParts on CouponBackground { __typename ... on RadialThemeGradient { __typename ...RadialThemeGradientParts } }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } price { pricePoints } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource background { __typename ...CouponBackgroundParts } __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment RichTextWithHeaderParts on RichTextWithHeader { header richText }"));
 		json_object_set_new(rootn, "variables", variablesn);
-		json_object_set_new(variablesn, "ployOfferId", json_string(ploy_iden));
+		json_object_set_new(variablesn, "ployOfferId", json_string(ploy_ids_bo_kurwa_reload[selectioncodelol - 5]));
 	}
 
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
@@ -306,7 +441,7 @@ void loadmore_promki(const char* mejntoken, const char* refrenentokenenkurwen, c
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
 	json_object_set_new(rootn, "operationName", json_string("PloyOfferListing"));
-	json_object_set_new(rootn, "query", json_string("query PloyOfferListing($ployOfferListingId: ID!, $after: String) { ployOfferListing(ployOfferListingId: $ployOfferListingId, after: $after) { __typename ...PloyOfferListingParts } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }"));
+	json_object_set_new(rootn, "query", json_string("query PloyOfferListing($ployOfferListingId: ID!, $after: String) { ployOfferListing(ployOfferListingId: $ployOfferListingId, after: $after) { __typename ...PloyOfferListingParts } }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } absoluteDiscounted: discounted { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment GradientPointParts on GradientPoint { color point }  fragment RadialThemeGradientParts on RadialThemeGradient { dark { __typename ...GradientPointParts } light { __typename ...GradientPointParts } }  fragment CouponBackgroundParts on CouponBackground { __typename ... on RadialThemeGradient { __typename ...RadialThemeGradientParts } }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } price { pricePoints } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource background { __typename ...CouponBackgroundParts } __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }"));
 	json_object_set_new(rootn, "variables", variablesn);
 	json_object_set_new(variablesn, "ployOfferListingId", json_string(afterajd));
 	json_object_set_new(variablesn, "after", json_string(aftermachen));
@@ -461,6 +596,7 @@ void activate_coupon(const char* mejntoken, const char* refrenentokenenkurwen) {
 	aktywacja_done = true;
 	buttonsy[4] = (Button){0};
 }
+
 void process_ids(int selectedbutton) {
 	LightLock_Lock(&global_response_lock);
 	log_to_file("Selected Button: %d", selectedbutton);
@@ -468,58 +604,72 @@ void process_ids(int selectedbutton) {
 	json_t *response_root = json_loads(global_response.data, 0, NULL);
 
 	json_t *data = json_object_get(response_root, "data");
-	
+
 	if (!dawajploy) {
 		if (!offermachen) {
 			json_t *zoneFeed = json_object_get(data, "zoneFeed");
-
-
 			json_t *sections = json_object_get(zoneFeed, "sections");
-
-
 			json_t *first_section = json_array_get(sections, 0);
-
-
-			json_t *tiles = json_object_get(first_section, "tiles");	
+			json_t *tiles = json_object_get(first_section, "tiles");
+			
 			log_to_file("button: %d", selectedbutton);
 			size_t tile_count = json_array_size(tiles);
 			log_to_file("Number of tiles: %zu", tile_count);
+
 			json_t *tilesselected = json_array_get(tiles, selectedbutton - 4);
 			log_to_file("arraytle: %d", selectedbutton - 4);
+
 			json_t *offerTreeLevel = json_object_get(tilesselected, "offerTreeLevel");
+			
 			json_t *id = json_object_get(offerTreeLevel, "id");
+			json_t *key = json_object_get(offerTreeLevel, "key");
 			json_t *typename = json_object_get(offerTreeLevel, "__typename");
-			if (strcmp(json_string_value(typename), "OfferCategory")) {
-				categoryornah = true;
-			} else {
-				categoryornah = false;
+			
+			const char *type_str = json_string_value(typename);
+			// if (type_str && strcmp(type_str, "PloyOfferListingRef") == 0) {
+				// categoryornah = true;
+			// } else {
+				// categoryornah = false;
+			// }
+
+
+			// Handle key
+			if (key && json_is_string(key)) {
+				free(ploy_keyen);
+				ploy_keyen = strdup(json_string_value(key));
+				log_to_file("Key: %s", ploy_keyen);
 			}
 
 			if (id) {
 				free(ploy_iden);
 				ploy_iden = strdup(json_string_value(id));
-				log_to_file("\nLoading id: %s...", ploy_iden);
-				aftermachenkurw = strdup(ploy_iden);
+				log_to_file("\nLoading id: %s...", kuponid);
+				aftermachenkurw = strdup(kuponid);
 			}
 			dawajploy = true;
 			log_to_file("zone not cat");
+
 		} else {
 			json_t *ployOfferListing = json_object_get(data, "ployOfferListing");
-
-
 			json_t *ployOffers = json_object_get(ployOfferListing, "ployOffers");
-
-
 			json_t *first_section = json_array_get(ployOffers, selectedbutton - 5);
 
-
 			if (categoryfeeddone) {
-				if (strcmp(typy_bo_kurwa_reload[selectedbutton - 5], "PloyOffer")) {
+				if (strcmp(typy_bo_kurwa_reload[selectedbutton - 5], "PloyOffer") != 0) {
 					dawajploy = false;
 				} else {
 					offermachen = false;
 				}
 			}
+
+			// Extract key from first_section
+			json_t *key = json_object_get(first_section, "key");
+			if (key && json_is_string(key)) {
+				free(ploy_keyen);
+				ploy_keyen = strdup(json_string_value(key));
+				log_to_file("Key: %s", ploy_keyen);
+			}
+
 			if (ploy_ids_bo_kurwa_reload[selectedbutton - 5]) {
 				free(ploy_iden);
 				ploy_iden = strdup(ploy_ids_bo_kurwa_reload[selectedbutton - 5]);
@@ -531,10 +681,17 @@ void process_ids(int selectedbutton) {
 	} else if (dawajploy) {
 		if (offermachen) {
 			json_t *zoneFeed = json_object_get(data, "ployOfferListing");
-
-
 			json_t *sections = json_object_get(zoneFeed, "ployOffers");
 			json_t *tilesselected = json_array_get(sections, selectedbutton - 5);
+
+			// Extract key
+			json_t *key = json_object_get(tilesselected, "key");
+			if (key && json_is_string(key)) {
+				free(ploy_keyen);
+				ploy_keyen = strdup(json_string_value(key));
+				log_to_file("Key: %s", ploy_keyen);
+			}
+
 			json_t *id = json_object_get(tilesselected, "id");
 			if (ploy_ids_bo_kurwa_reload[selectedbutton - 5]) {
 				free(ploy_iden);
@@ -544,22 +701,33 @@ void process_ids(int selectedbutton) {
 			log_to_file("oferta");
 		} else {
 			json_t *offerCategoryFeed = json_object_get(data, "offerCategoryFeed");
-
-
 			json_t *offerCategory = json_object_get(offerCategoryFeed, "offerCategory");
 			json_t *levels = json_object_get(offerCategory, "levels");
+
 			log_to_file("button: %d", selectedbutton);
 			size_t tile_count = json_array_size(levels);
 			log_to_file("Number of tiles: %zu", tile_count);
+			
 			json_t *tilesselected = json_array_get(levels, selectedbutton - 5);
 			log_to_file("arraytle: %d", selectedbutton - 5);
+
 			json_t *id = json_object_get(tilesselected, "id");
+			json_t *key = json_object_get(tilesselected, "key");
 			json_t *typename = json_object_get(tilesselected, "__typename");
-			if (strcmp(json_string_value(typename), "OfferCategory")) {
+
+			if (strcmp(json_string_value(typename), "OfferCategory") != 0) {
 				categoryornah = true;
 			} else {
 				categoryornah = false;
 			}
+
+			// Extract key
+			if (key && json_is_string(key)) {
+				free(ploy_keyen);
+				ploy_keyen = strdup(json_string_value(key));
+				log_to_file("Key: %s", ploy_keyen);
+			}
+
 			if (id) {
 				free(ploy_iden);
 				ploy_iden = strdup(json_string_value(id));
@@ -569,13 +737,148 @@ void process_ids(int selectedbutton) {
 			dawajploy = false;
 			log_to_file("catfeed not cat");
 		}
-	} 
+	}
+
 	json_decref(response_root);
 	log_to_file("id: %s", ploy_iden);
+	log_to_file("key: %s", ploy_keyen ? ploy_keyen : "NULL");
 	LightLock_Unlock(&global_response_lock);
+}
 
+void load_subcategories(size_t mainCategoryIndex) {
+	mainName = strdup(tileNames[selectioncodelol - 5]);
+	log_to_file("MAINNAME: %s", mainName);
+    LightLock_Lock(&global_response_lock);
+
+    if (!global_response.data) {
+        log_to_file("ERROR: No response data available to process.");
+        LightLock_Unlock(&global_response_lock);
+        return;
+    }
+
+    json_t *response_root = json_loads(global_response.data, 0, NULL);
+    if (!response_root) {
+        log_to_file("ERROR: Failed to parse JSON response.");
+        LightLock_Unlock(&global_response_lock);
+        return;
+    }
+
+    json_t *data = json_object_get(response_root, "data");
+    if (!data) {
+        log_to_file("ERROR: 'data' not found in JSON.");
+        json_decref(response_root);
+        LightLock_Unlock(&global_response_lock);
+        return;
+    }
+
+    json_t *zoneTree = json_object_get(data, "zoneTree");
+    if (!zoneTree) {
+        log_to_file("ERROR: 'zoneTree' not found.");
+        json_decref(response_root);
+        LightLock_Unlock(&global_response_lock);
+        return;
+    }
+
+    json_t *nodes = json_object_get(zoneTree, "nodes");
+    if (!nodes || !json_is_array(nodes)) {
+        log_to_file("ERROR: 'nodes' not found or not an array.");
+        json_decref(response_root);
+        LightLock_Unlock(&global_response_lock);
+        return;
+    }
+
+    // Find the main category node (skip "Partnerzy")
+    size_t real_index = 0;
+    json_t *main_node = NULL;
+    size_t i;
+    json_t *node;
+    json_array_foreach(nodes, i, node) {
+        const char *title = json_string_value(json_object_get(node, "title"));
+        if (!title || strcmp(title, "Partnerzy") == 0)
+            continue;
+
+        if (real_index == mainCategoryIndex) {
+            main_node = node;
+            break;
+        }
+        real_index++;
+    }
+
+    if (!main_node) {
+        log_to_file("ERROR: Main category node not found for index %zu", mainCategoryIndex);
+        json_decref(response_root);
+        LightLock_Unlock(&global_response_lock);
+        return;
+    }
+
+    json_t *subnodes = json_object_get(main_node, "nodes");
+    if (!subnodes || !json_is_array(subnodes)) {
+        log_to_file("INFO: No subcategories found for main category '%s'",
+                    json_string_value(json_object_get(main_node, "title")));
+        // Clear existing subcategories
+        tileCount = 0;
+        max_scroll = 0;
+        json_decref(response_root);
+        LightLock_Unlock(&global_response_lock);
+        return;
+    }
+
+    // Clear previous subcategories
+    memset(ploy_ids_bo_kurwa_reload, 0, sizeof(ploy_ids_bo_kurwa_reload));
+    tileCount = 0;
+    max_scroll = 0;
+
+    // Skip the first subnode (which is the main category itself)
+    size_t j;
+    for (j = 1; j < json_array_size(subnodes); j++) {
+        json_t *subnode = json_array_get(subnodes, j);
+        const char *sub_title = json_string_value(json_object_get(subnode, "title"));
+        const char *sub_key = json_string_value(json_object_get(subnode, "key"));
+        if (!sub_title) continue;
+        if (!sub_key) sub_key = "";
+
+        strncpy(tileNames[tileCount], sub_title, sizeof(tileNames[tileCount]) - 1);
+        tileNames[tileCount][sizeof(tileNames[tileCount]) - 1] = '\0';
+
+        strncpy(ploy_ids_bo_kurwa_reload[tileCount], sub_key, sizeof(ploy_ids_bo_kurwa_reload[tileCount]) - 1);
+        ploy_ids_bo_kurwa_reload[tileCount][sizeof(ploy_ids_bo_kurwa_reload[tileCount]) - 1] = '\0';
+
+        C2D_TextFontParse(&g_kuponText[tileCount], font[0], kupon_text_Buf, sub_title);
+        C2D_TextOptimize(&g_kuponText[tileCount]);
+
+        buttonsy[5 + tileCount] = (Button){
+            .x = 0,
+            .y = 0,
+            .width = 134,
+            .height = 179,
+            .imageNormal = couponbutton,
+            .imagePressed = couponbutton_pressed,
+            .isPressed = false,
+            .scene = 14,
+            .scene2 = 15,
+            .scene3 = 15,
+            .scene4 = 15,
+            .scene5 = 15,
+            .sizenmachen = 1.0f,
+            .onClick = updateprom
+        };
+
+        log_to_file("Subcategory %zu: %s (key: %s)", tileCount, tileNames[tileCount], ploy_ids_bo_kurwa_reload[tileCount]);
+        tileCount++;
+    }
+
+    max_scroll = tileCount * (134 + 8) - 8;
+
+    json_decref(response_root);
+    LightLock_Unlock(&global_response_lock);
+}
+
+void onClick_load_subcategory() {
+	subcatin = true;
+    load_subcategories(selectioncodelol - 5);
 }
 void process_kupony() {
+	subcatin = false;
 	memset(ploy_ids_bo_kurwa_reload, 0, sizeof(ploy_ids_bo_kurwa_reload));
 	log_to_file("Processing Kupony...");
 	log_to_file("json_done: %d", json_done);
@@ -584,110 +887,105 @@ void process_kupony() {
 	log_to_file("zonefeeddone: %d", zonefeeddone);
 	printf("Processing Kupony...\n");
 	LightLock_Lock(&global_response_lock);
-    if (global_response.data) {
-        log_to_file("Processing JSON response...");
 
-        json_t *response_root = json_loads(global_response.data, 0, NULL);
-        if (!response_root) {
-            log_to_file("ERROR: Failed to parse JSON response.");
+	if (global_response.data) {
+		log_to_file("Processing JSON response...");
+
+		json_t *response_root = json_loads(global_response.data, 0, NULL);
+		if (!response_root) {
+			log_to_file("ERROR: Failed to parse JSON response.");
 			printf("\nERROR: Failed to parse JSON response.");
-            free_global_response();
+			free_global_response();
+			return;
+		}
 
-            return;
-        }
+		json_t *data = json_object_get(response_root, "data");
+		if (!data) {
+			log_to_file("ERROR: 'data' not found in the response.");
+			json_decref(response_root);
+			return;
+		}
 
-        json_t *data = json_object_get(response_root, "data");
-        if (!data) {
-            log_to_file("ERROR: 'data' not found in the response.");
-            json_decref(response_root);
-            return;
-        }
+		json_t *zoneTree = json_object_get(data, "zoneTree");
+		if (!zoneTree) {
+			log_to_file("ERROR: 'zoneTree' not found.");
+			json_decref(response_root);
+			return;
+		}
 
-        json_t *zoneFeed = json_object_get(data, "zoneFeed");
-        if (!zoneFeed) {
-            log_to_file("ERROR: 'zoneFeed' not found in the data.");
-            json_decref(response_root);
-            return;
-        }
+		json_t *nodes = json_object_get(zoneTree, "nodes");
+		if (!nodes || !json_is_array(nodes)) {
+			log_to_file("ERROR: 'nodes' not found or not an array.");
+			json_decref(response_root);
+			return;
+		}
 
-        json_t *sections = json_object_get(zoneFeed, "sections");
-        if (!sections || !json_is_array(sections)) {
-            log_to_file("ERROR: 'sections' not found or not an array.");
-            json_decref(response_root);
-            return;
-        }
-
-        json_t *first_section = json_array_get(sections, 0);
-        if (!first_section) {
-            log_to_file("ERROR: 'sections[0]' is null.");
-            json_decref(response_root);
-            return;
-        }
-
-        json_t *tiles = json_object_get(first_section, "tiles");
-        if (!tiles || !json_is_array(tiles)) {
-            log_to_file("ERROR: 'tiles' not found or not an array.");
-            json_decref(response_root);
-            return;
-        }
-
-        tileCount = 0;
-        size_t index;
-        json_t *tile;
+		tileCount = 0;
 		max_scroll = 0;
-		json_array_foreach(tiles, index, tile) {
-			if (tileCount >= json_array_size(tiles)) break;
 
-			json_t *offerTreeLevel = json_object_get(tile, "offerTreeLevel");
-			if (offerTreeLevel) {
-				json_t *title = json_object_get(offerTreeLevel, "title");
-				json_t *name = json_object_get(offerTreeLevel, "name");
-				if (strcmp(json_string_value(title) ? json_string_value(title) : json_string_value(name), "Partnerzy")) {
-					const char *text = json_string_value(title) ? json_string_value(title) : json_string_value(name);
-					if (text) {
+		size_t i;
+		json_t *node;
+		json_array_foreach(nodes, i, node) {
+			const char *title = json_string_value(json_object_get(node, "title"));
+			if (!title || strcmp(title, "Partnerzy") == 0)
+				continue;
 
-						C2D_TextFontParse(&g_kuponText[tileCount], font[0], kupon_text_Buf, text);
-						C2D_TextOptimize(&g_kuponText[tileCount]);
-						
-						buttonsy[5 + tileCount] = (Button){
-							.x = 0,
-							.y = 0,
-							.width = 134,
-							.height = 179,
-							.imageNormal = couponbutton,
-							.imagePressed = couponbutton_pressed,
-							.isPressed = false,
-							.scene = 14,
-							.scene2 = 15,
-							.scene3 = 15,
-							.scene4 = 15,
-							.scene5 = 15,
-							.sizenmachen = 1.0f,
-							.onClick = updateprom
-						};
+			const char *key = json_string_value(json_object_get(node, "key"));
+			if (!key) key = "";
 
-						if (text) {
-							strncpy(tileNames[tileCount], text, sizeof(tileNames[tileCount]) - 1);
-							tileNames[tileCount][sizeof(tileNames[tileCount]) - 1] = '\0';
-						}
-						log_to_file("Tile %zu: %s", index, tileNames[tileCount]);
-						printf("\nTile %zu: %s", index, tileNames[tileCount]);
-						log_to_file("Button %zu", 5 + tileCount);
-						printf("\nButton %zu", 5 + tileCount);
-						max_scroll += buttonsy[5 + tileCount].width + 8;
-						tileCount++;
-					}
+			strncpy(tileNames[tileCount], title, sizeof(tileNames[tileCount]) - 1);
+			tileNames[tileCount][sizeof(tileNames[tileCount]) - 1] = '\0';
+
+			strncpy(ploy_ids_bo_kurwa_reload[tileCount], key, sizeof(ploy_ids_bo_kurwa_reload[tileCount]) - 1);
+			ploy_ids_bo_kurwa_reload[tileCount][sizeof(ploy_ids_bo_kurwa_reload[tileCount]) - 1] = '\0';
+
+			C2D_TextFontParse(&g_kuponText[tileCount], font[0], kupon_text_Buf, title);
+			C2D_TextOptimize(&g_kuponText[tileCount]);
+
+			bool has_subcategories = false;
+			const char *typename_str = json_string_value(json_object_get(node, "__typename"));
+
+			if (typename_str && strcmp(typename_str, "ZoneTree") == 0) {
+				json_t *subnodes = json_object_get(node, "nodes");
+				if (subnodes && json_is_array(subnodes) && json_array_size(subnodes) > 0) {
+					has_subcategories = true;
 				}
 			}
+			no_subcategories_flag[tileCount] = !has_subcategories;
+			buttonsy[5 + tileCount] = (Button){
+				.x = 0,
+				.y = 0,
+				.width = 134,
+				.height = 179,
+				.imageNormal = couponbutton,
+				.imagePressed = couponbutton_pressed,
+				.isPressed = false,
+				.scene = 14,
+				.scene2 = 15,
+				.scene3 = 15,
+				.scene4 = 15,
+				.scene5 = 15,
+				.sizenmachen = 1.0f,
+				.onClick = has_subcategories ? onClick_load_subcategory : updateprom
+			};
+
+			log_to_file("Main Tile %zu: %s (key: %s)", tileCount, tileNames[tileCount], ploy_ids_bo_kurwa_reload[tileCount]);
+			printf("\nMain Tile %zu: %s (key: %s)", tileCount, tileNames[tileCount], ploy_ids_bo_kurwa_reload[tileCount]);
+
+			max_scroll += buttonsy[5 + tileCount].width + 8;
+			tileCount++;
 		}
+
 		max_scroll -= 134;
-        json_decref(response_root);
+
+		json_decref(response_root);
 		zonefeeddone = true;
 		loadingshit = true;
 
-    } else {
-        log_to_file("ERROR: No response data available to process.");
-    }
+	} else {
+		log_to_file("ERROR: No response data available to process.");
+	}
+
 	przycskmachen = true;
 	log_to_file("json_done: %d", json_done);
 	log_to_file("loadingshit: %d", loadingshit);
@@ -695,6 +993,7 @@ void process_kupony() {
 	log_to_file("zonefeeddone: %d", zonefeeddone);
 	LightLock_Unlock(&global_response_lock);
 }
+
 void process_category() {
 	int kurwavar = 4;
     C2D_TextBufClear(kupon_text_Buf);
@@ -708,7 +1007,7 @@ void process_category() {
 
         return;
     }
-	if (!categoryornah) {
+	if (categoryornah) {
 		json_t *data = json_object_get(response_root, "data");
 		json_t *offerCategoryFeed = json_object_get(data, "offerCategoryFeed");
 		json_t *offerCategory = json_object_get(offerCategoryFeed, "offerCategory");
@@ -1083,7 +1382,7 @@ void getzappsy_startup(const char* mejntoken, const char* refrenentokenenkurwen)
     json_t *variablesn = json_object();
     
     json_object_set_new(rootn, "operationName", json_string("LoyaltyPoints"));
-    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
+    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points } }"));
     json_object_set_new(rootn, "variables", variablesn);
 
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
@@ -1136,7 +1435,7 @@ void updatezappsy(const char* mejntoken, const char* refrenentokenenkurwen) {
     json_t *variablesn = json_object();
     
     json_object_set_new(rootn, "operationName", json_string("LoyaltyPoints"));
-    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
+    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points } }"));
     json_object_set_new(rootn, "variables", variablesn);
 
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
@@ -1168,10 +1467,10 @@ void updateploy(const char* mejntoken, const char* refrenentokenenkurwen) {
     json_t *rootn = json_object();
     json_t *variablesn = json_object();
     
-    json_object_set_new(rootn, "operationName", json_string("ZoneFeedByKey"));
-    json_object_set_new(rootn, "query", json_string("query ZoneFeedByKey($zoneFeedKey: String!, $after: String) { zoneFeed(zoneFeedKey: $zoneFeedKey, after: $after) { sections { __typename ... on OfferTileSection { __typename ...OfferTileSectionParts } ... on PromotionBannerCarousel { __typename ...PromotionBannerCarouselParts } ... on ProductPromotionListingCarousel { __typename ...ProductPromotionListingCarouselParts } ... on PloyOfferListingCarousel { __typename ...PloyOfferListingCarouselParts } ... on DealCarousel { __typename ...DealCarouselParts } ... on OptionTileSection { __typename ...OptionTileSectionParts } ... on StoriesSection { __typename ...StoriesSectionParts } ... on DealListingCarousel { __typename ...DealListingCarouselParts } } pagination { cursor } } }  fragment OfferTileSectionParts on OfferTileSection { id title tiles { id backgroundImage { url } offerTreeLevel { __typename ... on OfferCategory { id name } ... on PloyOfferListing { id title } ... on ProductPromotionListing { id title } } } }  fragment SwipeCarouselPropertiesParts on SwipeCarouselProperties { swipeId: id swipeTitle: title }  fragment AutoplayCarouselPropertiesParts on AutoplayCarouselProperties { autoplayId: id autoplayTitle: title autoplayIntervalMillis }  fragment PriceParts on Price { amount currencyCode fractionDigits }  fragment ColorParts on ThemeColor { light dark }  fragment BadgeParts on PromotionBadge { key label textColor { __typename ...ColorParts } }  fragment AbsoluteDiscountValueParts on AbsoluteDiscountValue { absoluteValue: value { __typename ...PriceParts } absoluteDiscount: discount { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment RelativeDiscountValueParts on RelativeDiscountValue { percentage relativeValue: value { __typename ...PriceParts } omnibusLongDescription omnibusShortDescription roundOff }  fragment MultibuyDiscountValueParts on MultibuyDiscountValue { multibuyValue: value { __typename ...PriceParts } maxQuantity triggerQuantity multibuyDiscount: discount { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } } }  fragment DiscountParts on DiscountValue { __typename ... on AbsoluteDiscountValue { __typename ...AbsoluteDiscountValueParts } ... on RelativeDiscountValue { __typename ...RelativeDiscountValueParts } ... on MultibuyDiscountValue { __typename ...MultibuyDiscountValueParts } }  fragment HappyHourParts on HappyHour { alert validFrom validUntil }  fragment PromotionHighlightParts on PromotionHighlight { layout keyVisualImage { url } }  fragment TagParts on PromotionTag { backgroundColor { __typename ...ColorParts } key label longLabel textColor { __typename ...ColorParts } }  fragment ProductPromotionParts on ProductPromotion { id name image { url } detailsImage { url } contents detailsContents exclusivity isPricePerUnit hasLegalDetails hidePromotionAlerts legalShortDetails legalLongDetails validFrom validUntil promotionDurationDetails alternativeBasePrice { __typename ...PriceParts } basePrice { __typename ...PriceParts } badges { __typename ...BadgeParts } discount { __typename ...DiscountParts } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } tags { __typename ...TagParts } __typename }  fragment MediumPromotionBannerPropertiesParts on MediumPromotionBannerProperties { mediumTitle: title mediumSubtitle: subtitle image { url } }  fragment RelativeProductPromotionPriceLabelParts on RelativeProductPromotionPriceLabel { percentage roundOff textColor { __typename ...ColorParts } }  fragment AbsoluteProductPromotionPriceLabelParts on AbsoluteProductPromotionPriceLabel { price { __typename ...PriceParts } roundOff textColor { __typename ...ColorParts } }  fragment LargeProductPromotionListingBannerPropertiesParts on LargeProductPromotionListingBannerProperties { image { url } }  fragment DigitalProductPromotionParts on DigitalProductPromotion { id name code contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment PartnerProductPromotionParts on PartnerProductPromotion { id name contents detailsContents exclusivity images { url } happyHour { __typename ...HappyHourParts } highlight { __typename ...PromotionHighlightParts } badges { __typename ...BadgeParts } validFrom validUntil }  fragment InAppProductPromotionParts on InAppProductPromotion { id name contents detailsContents happyHour { __typename ...HappyHourParts } productType image { url } validFrom validUntil }  fragment CouponParts on Coupon { id keyVisualImage { url } lastingAt validFrom validUntil showFullDate targetPromotion { __typename ... on ProductPromotion { __typename ...ProductPromotionParts id } ... on DigitalProductPromotion { __typename ...DigitalProductPromotionParts } ... on PartnerProductPromotion { __typename ...PartnerProductPromotionParts } ... on InAppProductPromotion { __typename ...InAppProductPromotionParts } } currentRedeemedQuantity possibleRedeems redeemLimitPerClient state couponSource __typename }  fragment PloyOfferParts on PloyOffer { id coupon { __typename ...CouponParts id } price { base discounted } visualDiscount __typename }  fragment LargePloyOfferBannerPropertiesParts on LargePloyOfferBannerProperties { image { url } }  fragment MediumPloyOfferBannerPropertiesParts on MediumPloyOfferBannerProperties { image { url } }  fragment PloyOfferPriceLabelParts on PloyOfferPriceLabel { ployPrice roundOff textColor { __typename ...ColorParts } }  fragment CtaParts on Cta { title subtitle action { label link } id image { url } __typename }  fragment LargePromotionBannerPropertiesParts on LargePromotionBannerProperties { largeTitle: title largeSubtitle: subtitle image { url } }  fragment DealParts on Deal { id coupon { __typename ...CouponParts id } ployPrice __typename }  fragment QuestParts on Quest { id title subtitle bannerImage { url } detailsImage { url } lastingAt description questCompleted repeatable badges progressSummary { status totalSteps finishedSteps } stages { status subStages { status description totalSteps finishedSteps } completionDescription } }  fragment PromotionBannerCarouselParts on PromotionBannerCarousel { id title carouselProperties: properties { __typename ... on SwipeCarouselProperties { __typename ...SwipeCarouselPropertiesParts } ... on AutoplayCarouselProperties { __typename ...AutoplayCarouselPropertiesParts } } banners { __typename ... on ProductPromotionBanner { id productPromotion { __typename ...ProductPromotionParts id } properties { __typename ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on ProductPromotionListingBanner { id header title validFrom validUntil exclusivity priceLabel { __typename ... on RelativeProductPromotionPriceLabel { __typename ...RelativeProductPromotionPriceLabelParts } ... on AbsoluteProductPromotionPriceLabel { __typename ...AbsoluteProductPromotionPriceLabelParts } } listingRef: productPromotionListingRef { id } properties { __typename ... on LargeProductPromotionListingBannerProperties { __typename ...LargeProductPromotionListingBannerPropertiesParts } } } ... on PloyOfferBanner { id ployOffer { __typename ...PloyOfferParts id } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } ... on MediumPloyOfferBannerProperties { __typename ...MediumPloyOfferBannerPropertiesParts } } } ... on PloyOfferListingBanner { id header title validFrom validUntil exclusivity ployOfferListingRef { id } priceLabel { __typename ...PloyOfferPriceLabelParts } properties { __typename ... on LargePloyOfferBannerProperties { __typename ...LargePloyOfferBannerPropertiesParts } } } ... on CtaBanner { id cta { __typename ...CtaParts id } properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } header label } ... on Deal { __typename ...DealParts id } ... on LinkBanner { id header link properties { __typename ... on LargePromotionBannerProperties { __typename ...LargePromotionBannerPropertiesParts } ... on MediumPromotionBannerProperties { __typename ...MediumPromotionBannerPropertiesParts } } } ... on Quest { __typename ...QuestParts } } }  fragment ScrollCarouselPropertiesParts on ScrollCarouselProperties { id title showMore }  fragment ProductPromotionListingParts on ProductPromotionListing { id title productPromotions { __typename ...ProductPromotionParts id } pagination { cursor } }  fragment ProductPromotionListingCarouselParts on ProductPromotionListingCarousel { id title properties { __typename ...ScrollCarouselPropertiesParts } productPromotionListing { __typename ...ProductPromotionListingParts } }  fragment PloyOfferListingParts on PloyOfferListing { id title ployOffers { __typename ...PloyOfferParts id } pagination { cursor } }  fragment PloyOfferListingCarouselParts on PloyOfferListingCarousel { id properties { __typename ...ScrollCarouselPropertiesParts } ployOfferListing { __typename ...PloyOfferListingParts } }  fragment DealCarouselParts on DealCarousel { id deals { __typename ...DealParts id } properties { __typename ...ScrollCarouselPropertiesParts } }  fragment OptionTileParts on OptionTile { id label link }  fragment OptionTileSectionParts on OptionTileSection { id title subtitle optionTiles { __typename ...OptionTileParts } }  fragment StoriesSectionParts on StoriesSection { id title storiesSource labels }  fragment DealListingCarouselParts on DealListingCarousel { id dealListing { id title deals { __typename ...DealParts id } } properties { __typename ...ScrollCarouselPropertiesParts } }"));
+    json_object_set_new(rootn, "operationName", json_string("ZoneTree"));
+    json_object_set_new(rootn, "query", json_string("query ZoneTree($zoneKey: String!) { zoneTree(zoneKey: $zoneKey) { __typename ...ZoneTreeFields nodes { __typename ...ZoneTreeChildren ... on ZoneTree { __typename ...ZoneTreeFields nodes { __typename ...ZoneTreeChildren } } } } }  fragment ZoneTreeFields on ZoneTree { id title }  fragment ContentFeedRefParts on ContentFeedRef { id key title }  fragment DealListingRefParts on DealListingRef { id title }  fragment PloyOfferListingRefParts on PloyOfferListingRef { id title }  fragment ProductPromotionListingRefParts on ProductPromotionListingRef { id title }  fragment ZoneTreeChildren on ZoneTreeNode { __typename ... on ContentFeedRef { __typename ...ContentFeedRefParts } ... on DealListingRef { __typename ...DealListingRefParts } ... on PloyOfferListingRef { __typename ...PloyOfferListingRefParts } ... on ProductPromotionListingRef { __typename ...ProductPromotionListingRefParts } }"));
     json_object_set_new(rootn, "variables", variablesn);
-	json_object_set_new(variablesn, "zoneFeedKey", json_string("ploy-zabka"));
+	json_object_set_new(variablesn, "zoneKey", json_string("ploy-zabka"));
 
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
     json_decref(rootn);
@@ -1206,7 +1505,7 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
     json_t *variablesn = json_object();
 
     json_object_set_new(rootn, "operationName", json_string("LoyaltyPoints"));
-    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points pointsStatus pointsOperationsAvailable } }"));
+    json_object_set_new(rootn, "query", json_string("query LoyaltyPoints { loyaltyProgram { points } }"));
     json_object_set_new(rootn, "variables", variablesn);
 
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
@@ -1236,6 +1535,9 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 			json_datan = json_dumps(rootn, JSON_COMPACT);
 
 			headers = curl_slist_append(headers, "Content-Type: application/json");
+			headers = curl_slist_append(headers, "X-Android-Package: pl.zabka.apb2c");
+			headers = curl_slist_append(headers, "X-Android-Cert: FAB089D9E5B41002F29848FC8034A391EE177077");
+			headers = curl_slist_append(headers, "User-Agent: Dalvik/2.1.0 (Linux; U; Android 13; 22011119UY Build/TP1A.220624.014)");
 
 			refresh_data("https://securetoken.googleapis.com/v1/token?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_datan, headers);
 
@@ -1346,6 +1648,9 @@ void login_flow(const char *phone_number, const char *verification_code) {
 		response_root = NULL;
 		
 		headers = curl_slist_append(headers, "Content-Type: application/json");
+		headers = curl_slist_append(headers, "X-Android-Package: pl.zabka.apb2c");
+		headers = curl_slist_append(headers, "X-Android-Cert: FAB089D9E5B41002F29848FC8034A391EE177077");
+		headers = curl_slist_append(headers, "User-Agent: Dalvik/2.1.0 (Linux; U; Android 13; 22011119UY Build/TP1A.220624.014)");
 
 		json_object_set_new(root, "token", json_string(id_tokenk));
 		json_object_set_new(root, "returnSecureToken", json_string("true"));
@@ -1377,7 +1682,6 @@ void login_flow(const char *phone_number, const char *verification_code) {
 			json_object_set_new(saveroot, "token", json_string(id_tokenk));
 			json_object_set_new(saveroot, "refresh", json_string(refreshtoken));
 			json_data = json_dumps(root, JSON_COMPACT);
-
 			refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
 		}
 
@@ -1388,7 +1692,7 @@ void login_flow(const char *phone_number, const char *verification_code) {
 		
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 		headers = curl_slist_append(headers, "accept: application/json");
-		headers = curl_slist_append(headers, "user-agent: Zappka/40038 (Horizon; nintendo/ctr; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/28");
+		headers = curl_slist_append(headers, "user-agent: Zappka/40038 (Horizon; ctr/citrus; 56c41945-ba88-4543-a525-4e8f7d4a5812) REL/32");
 		snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", id_tokenk);
 		headers = curl_slist_append(headers, auth_header);
 

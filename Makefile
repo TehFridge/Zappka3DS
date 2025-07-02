@@ -40,7 +40,7 @@ GRAPHICS	:=	gfx
 ROMFS		:=	romfs
 GFXBUILD	:=	$(ROMFS)/gfx
 #---------------------------------------------------------------------------------
-APP_VER				:= 2051
+APP_VER				:= 2052
 APP_TITLE			:= Zappka3DS
 APP_DESCRIPTION		:= Zappka na Nintendo 3DS
 APP_AUTHOR			:= TehFridge

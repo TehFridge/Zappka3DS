@@ -276,7 +276,77 @@ static size_t cb(void *data, size_t size, size_t nmemb, void *clientp)
   return realsize;
 }
 
+void synerise_tokenauth() {
+    CURL *curl;
+    CURLcode res;
 
+    json_t *json = json_object();
+    if (!json) {
+        fprintf(stderr, "Failed to create JSON object\n");
+        return;
+    }
+	char device_id[17];
+	for (int i = 0; i < 16; i++) {
+		sprintf(device_id + i, "%x", rand() % 16);
+	}
+	device_id[16] = '\0';
+	srand(time(NULL)); // Or use better RNG if needed
+	char uuid[37];     // 36 chars + null terminator
+	generate_uuid_v4(uuid);
+    json_object_set_new(json, "apiKey", json_string("2329c8ce-0278-49e2-9d99-5ee70186b5dd"));
+    json_object_set_new(json, "uuid", json_string(uuid));
+    json_object_set_new(json, "deviceID", json_string(device_id));
+
+    char *data = json_dumps(json, JSON_COMPACT);
+
+    curl_global_init(CURL_GLOBAL_ALL);
+    curl = curl_easy_init();
+    if (curl) {
+        struct curl_slist *headers = NULL;
+
+        log_to_file("Starting request to URL: https://zabka-snrs.zabka.pl/sauth/v3/auth/login/client/anonymous");
+        log_to_file("Request Data: %s", data);
+        curl_easy_setopt(curl, CURLOPT_URL, "https://zabka-snrs.zabka.pl/sauth/v3/auth/login/client/anonymous");
+
+
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+		headers = curl_slist_append(headers, "User-Agent: Synerise Android SDK 6.3.0 pl.zabka.apb2c");
+        char auth_header[2048];
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+		curl_easy_setopt(curl, CURLOPT_CAINFO, "romfs:/cacert.pem");
+        curl_easy_setopt(curl, CURLOPT_STDERR, fopen(LOG_FILE, "a"));
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+
+        res = curl_easy_perform(curl);
+
+
+        if (res != CURLE_OK) {
+            log_to_file("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+        } else {
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+            log_to_file("Request successful! Response Code: %ld", response_code);
+            log_to_file("Response: %s", response);
+        }
+
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
+
+
+    curl_global_cleanup();
+
+
+    free(data);
+    json_decref(json);
+}
 
 void send_verification_code(const char *nrtel, const char *id_token) {
     CURL *curl;
@@ -418,6 +488,9 @@ void send_ver_code_preauth() {
 
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
+	headers = curl_slist_append(headers, "X-Android-Package: pl.zabka.apb2c");
+	headers = curl_slist_append(headers, "X-Android-Cert: FAB089D9E5B41002F29848FC8034A391EE177077");
+	headers = curl_slist_append(headers, "User-Agent: Dalvik/2.1.0 (Linux; U; Android 13; 22011119UY Build/TP1A.220624.014)");
 
     json_t *json = json_object();
     json_object_set_new(json, "clientType", json_string("CLIENT_TYPE_ANDROID"));
@@ -435,9 +508,18 @@ void send_ver_code_preauth() {
     }
 
 
-    curl_slist_free_all(headers);
     free(data);
     json_decref(json);
+	
+	root = json_object();
+	json_object_set_new(root, "idToken", json_string(id_tokenk));
+	char *json_data = json_dumps(root, JSON_COMPACT);
+
+	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
+	
+    curl_slist_free_all(headers);
+	free(json_data);
+	json_decref(root);
 }
 void rebuild_buffer() {
 	C2D_TextBufClear(g_staticBuf);
@@ -1521,6 +1603,7 @@ int main(int argc, char* argv[]) {
 				swkbdSetFeatures(&swkbd, SWKBD_FIXED_WIDTH);
 				button = swkbdInputText(&swkbd, mybuf, sizeof(mybuf));
 				numertelefonen = mybuf;
+				synerise_tokenauth();
 				send_ver_code_preauth();
 				send_verification_code(mybuf, id_tokenk);
 				timer = 0.0f;
