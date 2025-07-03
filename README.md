@@ -18,5 +18,9 @@ Dodatkowe grafiki ~~i wsparcie mentalne~~: [Reichisan](https://www.twitch.tv/rei
 
 I podziękowania dla wszystkich Ambasadorów Żappka3DS za Beta Testing.
 
+## Notka dla kogolwiek kto chce skompilować tą aplikacje.
+
+Żeby kompilacja sie udała musisz manualnie wyciągnąć klucze do API Żappki i pośredniczącego ich tokeny Google'a, i wstawić je do pliku config.c
+
 ## Notka Prawna (Polski)
 Ta aplikacja jest projektem open source napisaną w języku C, która korzysta z API aplikacji Żappka, należącej do Żabka Group S.A. Aplikacja została stworzona wyłącznie w celach edukacyjnych i nie jest powiązana z Żabka Group S.A. Twórca aplikacji nie jest w żaden sposób związany z Żabka Group S.A. i nie czerpie żadnych korzyści finansowych z tego projektu. Wszystkie znaki towarowe, nazwy handlowe i logotypy są własnością odpowiednich właścicieli. Użytkownicy korzystają z aplikacji na własne ryzyko.

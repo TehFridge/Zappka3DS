@@ -5,4 +5,3 @@
 *.elf
 *.smdh
 /source/config.c
-/source/config.h
