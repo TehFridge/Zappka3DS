@@ -11,6 +11,7 @@
 #include "request.h"
 #include "buttons.h"
 #include "zappka_totp_qr.h"
+#include "config.h"
 #include "mbedtls/base64.h"
 #include <time.h>
 #define LOG_FILE "curl_log.txt"

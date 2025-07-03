@@ -22,7 +22,7 @@
 #include "zappka_api_processing.h"
 #include "buttons.h"
 #include "cwav_shit.h"
-
+#include "config.h"
 #define MAX_SPRITES   1
 #define SCREEN_WIDTH  400
 #define SCREEN_HEIGHT 240
@@ -293,7 +293,7 @@ void synerise_tokenauth() {
 	srand(time(NULL)); // Or use better RNG if needed
 	char uuid[37];     // 36 chars + null terminator
 	generate_uuid_v4(uuid);
-    json_object_set_new(json, "apiKey", json_string("2329c8ce-0278-49e2-9d99-5ee70186b5dd"));
+    json_object_set_new(json, "apiKey", json_string(ZappkaAPIKEY));
     json_object_set_new(json, "uuid", json_string(uuid));
     json_object_set_new(json, "deviceID", json_string(device_id));
 
@@ -495,8 +495,8 @@ void send_ver_code_preauth() {
     json_t *json = json_object();
     json_object_set_new(json, "clientType", json_string("CLIENT_TYPE_ANDROID"));
     char *data = json_dumps(json, JSON_COMPACT);
-
-    const char *url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q";
+	char url[512];
+	snprintf(url, sizeof(url), "https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=%s", googleAPIKEY);
 
     refresh_data(url, data, headers);
 
@@ -514,8 +514,8 @@ void send_ver_code_preauth() {
 	root = json_object();
 	json_object_set_new(root, "idToken", json_string(id_tokenk));
 	char *json_data = json_dumps(root, JSON_COMPACT);
-
-	refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
+	snprintf(url, sizeof(url), "https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=%s", googleAPIKEY);
+	refresh_data(url, json_data, headers);
 	
     curl_slist_free_all(headers);
 	free(json_data);

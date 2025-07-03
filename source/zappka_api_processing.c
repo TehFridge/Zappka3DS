@@ -1538,8 +1538,9 @@ void sprawdzajtokenasa(const char* mejntoken, const char* refrenentokenenkurwen)
 			headers = curl_slist_append(headers, "X-Android-Package: pl.zabka.apb2c");
 			headers = curl_slist_append(headers, "X-Android-Cert: FAB089D9E5B41002F29848FC8034A391EE177077");
 			headers = curl_slist_append(headers, "User-Agent: Dalvik/2.1.0 (Linux; U; Android 13; 22011119UY Build/TP1A.220624.014)");
-
-			refresh_data("https://securetoken.googleapis.com/v1/token?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_datan, headers);
+			char url[512];
+			snprintf(url, sizeof(url), "https://securetoken.googleapis.com/v1/token?key=%s", googleAPIKEY);
+			refresh_data(url, json_datan, headers);
 
 			free(json_datan);
 
@@ -1656,8 +1657,9 @@ void login_flow(const char *phone_number, const char *verification_code) {
 		json_object_set_new(root, "returnSecureToken", json_string("true"));
 		json_data = json_dumps(root, JSON_COMPACT);
 
-
-		refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
+		char url[512];
+		snprintf(url, sizeof(url), "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=%s", googleAPIKEY);
+		refresh_data(url, json_data, headers);
 
 
 		response_root = json_loads(global_response.data, 0, NULL);
@@ -1682,7 +1684,8 @@ void login_flow(const char *phone_number, const char *verification_code) {
 			json_object_set_new(saveroot, "token", json_string(id_tokenk));
 			json_object_set_new(saveroot, "refresh", json_string(refreshtoken));
 			json_data = json_dumps(root, JSON_COMPACT);
-			refresh_data("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=AIzaSyDe2Fgxn_8HJ6NrtJtp69YqXwocutAoa9Q", json_data, headers);
+			snprintf(url, sizeof(url), "https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo?key=%s", googleAPIKEY);
+			refresh_data(url, json_data, headers);
 		}
 
 		free(json_data);
