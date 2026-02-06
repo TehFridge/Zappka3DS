@@ -1,3 +1,5 @@
+# ŻABKA COŚ ZMIENIŁA I W AUTORYZACJI I W SAMEJ APCE WIĘC MUSICIE CZEKAĆ NA REWRITE'A
+
 [Release Trailer](https://www.youtube.com/watch?v=NXumTBJQcIE)  |  [Discord 3(DS) Polska](http://discord.gg/Rxf9FR9DaS)
 
 # Zdobywaj Żappsy™ prosto i unikalnie Żappka3DS
