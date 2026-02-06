@@ -746,6 +746,7 @@ void process_ids(int selectedbutton) {
 }
 
 void load_subcategories(size_t mainCategoryIndex) {
+	removeButtonEntries(70);
 	mainName = strdup(tileNames[selectioncodelol - 5]);
 	log_to_file("MAINNAME: %s", mainName);
     LightLock_Lock(&global_response_lock);
@@ -878,6 +879,7 @@ void onClick_load_subcategory() {
     load_subcategories(selectioncodelol - 5);
 }
 void process_kupony() {
+	removeButtonEntries(100);
 	subcatin = false;
 	memset(ploy_ids_bo_kurwa_reload, 0, sizeof(ploy_ids_bo_kurwa_reload));
 	log_to_file("Processing Kupony...");
@@ -996,6 +998,7 @@ void process_kupony() {
 
 void process_category() {
 	int kurwavar = 4;
+	removeButtonEntries(100);
     C2D_TextBufClear(kupon_text_Buf);
     
     log_to_file("Processing JSON response...");
@@ -1470,7 +1473,7 @@ void updateploy(const char* mejntoken, const char* refrenentokenenkurwen) {
     json_object_set_new(rootn, "operationName", json_string("ZoneTree"));
     json_object_set_new(rootn, "query", json_string("query ZoneTree($zoneKey: String!) { zoneTree(zoneKey: $zoneKey) { __typename ...ZoneTreeFields nodes { __typename ...ZoneTreeChildren ... on ZoneTree { __typename ...ZoneTreeFields nodes { __typename ...ZoneTreeChildren } } } } }  fragment ZoneTreeFields on ZoneTree { id title }  fragment ContentFeedRefParts on ContentFeedRef { id key title }  fragment DealListingRefParts on DealListingRef { id title }  fragment PloyOfferListingRefParts on PloyOfferListingRef { id title }  fragment ProductPromotionListingRefParts on ProductPromotionListingRef { id title }  fragment ZoneTreeChildren on ZoneTreeNode { __typename ... on ContentFeedRef { __typename ...ContentFeedRefParts } ... on DealListingRef { __typename ...DealListingRefParts } ... on PloyOfferListingRef { __typename ...PloyOfferListingRefParts } ... on ProductPromotionListingRef { __typename ...ProductPromotionListingRefParts } }"));
     json_object_set_new(rootn, "variables", variablesn);
-	json_object_set_new(variablesn, "zoneKey", json_string("ploy-zabka"));
+	json_object_set_new(variablesn, "zoneKey", json_string("ploy-zabka-kategorie-l1"));
 
     char *json_datan = json_dumps(rootn, JSON_COMPACT);
     json_decref(rootn);

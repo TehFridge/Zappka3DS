@@ -17,5 +17,11 @@ extern CWAV* sfx;
 void populateCwavList();
 
 void freeCwavList();
+bool loadCwavIndex(u32 index);
+void unloadCwavIndex(u32 index);
+void initCwavSystem(void);
 
+void freeAllCwavs(void);
+void playCwav(u32 index,bool stereo);
+void stopCwav(u32 index);
 #endif
