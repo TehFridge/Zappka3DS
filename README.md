@@ -1,5 +1,4 @@
-# ~~ŻABKA COŚ ZMIENIŁA I W AUTORYZACJI I W SAMEJ APCE WIĘC MUSICIE CZEKAĆ NA REWRITE'A~~
-## Update: naprawiłem logowanie ale i tak kupony itp. nie działają :(
+
 
 [Release Trailer](https://www.youtube.com/watch?v=NXumTBJQcIE)  |  [Discord 3(DS) Polska](http://discord.gg/Rxf9FR9DaS)
 
